@@ -1,0 +1,24 @@
+# .git is the repository metadata. Git never stages it, so it is not listed here.
+
+# Linux 0.11 build products (same set as Makefile clean)
+*.o
+*.a
+Image
+System.map
+tmp_make
+tmp.s
+core
+**/boot/bootsect
+**/boot/setup
+**/tools/system
+**/tools/build
+
+# Generated boot images in this repository
+/images/*
+
+# Empty-directory placeholders. Git does not store empty directories.
+**/.gitkeep
+
+# Later simulator output
+m5out/
+*.log
