@@ -11,7 +11,13 @@ core
 **/boot/bootsect
 **/boot/setup
 **/tools/system
+**/tools/system.elf
 **/tools/build
+# cpp output of keyboard.S; the source is keyboard.S
+**/kernel/chr_drv/keyboard.s
+
+# Teaching disk used by QEMU. Not built from this tree yet; see docs/en/backlog.md.
+rootfs/hdc-0.11.img
 
 # Generated boot images in this repository
 /images/*
