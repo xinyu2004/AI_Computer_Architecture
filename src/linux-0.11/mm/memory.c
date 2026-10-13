@@ -51,6 +51,13 @@ current->start_code + current->end_code)
 
 static long HIGH_MEMORY = 0;
 
+/*
+ * Copy one 4KB page. ESI is the source, EDI the destination, ECX the
+ * number of dwords (4096/4). CLD makes the pointers advance upward.
+ * REP MOVSL repeats a dword move until ECX is zero. This is the body
+ * of a copy-on-write break: the caller has already allocated the new
+ * page and pointed the caller's page-table entry at it.
+ */
 #define copy_page(from,to) ({ \
 unsigned long __from = (unsigned long)(from), __to = (unsigned long)(to), __n = 1024; \
 __asm__ volatile ("cld ; rep ; movsl" \
@@ -63,6 +70,10 @@ static unsigned char mem_map [ PAGING_PAGES ] = {0,};
 /*
  * Get physical address of first (actually last :-) free page, and mark it
  * used. If no free pages left, return 0.
+ *
+ * REPNE SCASB scans the page map backward for a zero byte: repeat the
+ * byte compare while the bytes are not equal, counting with ECX.
+ * REP STOSL then fills the new page with zeros, one doubleword at a time.
  */
 unsigned long get_free_page(void)
 {
@@ -222,6 +233,15 @@ unsigned long put_page(unsigned long page,unsigned long address)
 	return page;
 }
 
+/*
+ * A user write faulted on a present page that was marked read-only
+ * because more than one task shares it. If this task is now the only
+ * owner, the page is made writable in place. Otherwise a free page is
+ * taken, the old page's share count drops, the page-table entry is
+ * pointed at the new frame with present|write|user (bits 0, 1, and 2),
+ * and the old bytes are copied. invalidate() reloads CR3 so the CPU
+ * drops the translation it cached for the old, read-only mapping.
+ */
 void un_wp_page(unsigned long * table_entry)
 {
 	unsigned long old_page,new_page;

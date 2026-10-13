@@ -1,3 +1,12 @@
+/*
+ * Drop from kernel mode to user mode by building the stack frame
+ * IRET expects on a privilege change: user SS (0x17), the current
+ * ESP, EFLAGS, user CS (0x0F), and a return EIP. 0x0F and 0x17 are
+ * LDT selectors (the table bit is set) with RPL 3. IRET sees a
+ * numerically larger privilege on the new CS and pops the extra
+ * SS:ESP pair, so execution resumes at the label below as CPL 3.
+ * The data segments are then reloaded with the user data selector.
+ */
 #define move_to_user_mode() \
 __asm__ ("movl %%esp,%%eax\n\t" \
 	"pushl $0x17\n\t" \
@@ -19,6 +28,16 @@ __asm__ ("movl %%esp,%%eax\n\t" \
 
 #define iret() __asm__ ("iret"::)
 
+/*
+ * An IDT gate is 8 bytes. The low word of the offset and the selector
+ * go in the first dword; the high word of the offset, the type, and
+ * the DPL go in the second. Type 14 is an interrupt gate: the CPU
+ * clears IF on entry, so another IRQ cannot arrive until IRET or an
+ * explicit STI. Type 15 is a trap gate: IF is left alone. DPL is the
+ * privilege required to use the gate through an INT instruction.
+ * Hardware interrupts are delivered with DPL 0. The system-call gate
+ * is DPL 3 so user code may execute INT 0x80.
+ */
 #define _set_gate(gate_addr,type,dpl,addr) \
 __asm__ ("movw %%dx,%%ax\n\t" \
 	"movw %0,%%dx\n\t" \

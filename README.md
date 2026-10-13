@@ -6,14 +6,14 @@
 
 This repository is for people learning computer architecture through Linux 0.11. The kernel is small enough to read as a whole. It was written in 1991 for the 80386 and PC devices, and the way through it is to bring that kernel onto contemporary computers, then look further along the steps below.
 
-Before step 2, run `script/bootstrap.sh` once. [What it installs, and why](docs/en/tools.md).
+Before step 2, run `script/bootstrap.sh` once. [What it installs, and why](docs/en/tools.md). Instruction names that do not say what they do, such as `lmsw`, are on one page: [Instructions in this kernel](docs/en/instructions.md).
 
 ## Steps
 
 1. **Start from the original.** `reference/linux-0.11/` keeps Linux 0.11 unmodified. Later changes stay comparable with this tree.
 2. **Build it on a contemporary computer and run it in QEMU.** [What this step changes, and why](docs/en/build-and-qemu.md). The source is adjusted so today's toolchain can compile it. Change a line, rebuild, and watch what the operating system does: whether it boots, whether a system call returns, and whether a process appears.
 3. **Watch the machine state in Bochs.** [What you look at, and how](docs/en/bochs.md). On this same system, follow registers, the GDT, the IDT, page tables, and the TSS as the kernel enters protected mode, takes interrupts, and switches tasks.
-4. **Watch the cost of that execution in gem5.** [What you measure, and how](docs/en/gem5.md). Along the same kernel paths, follow cycles, cache misses, and pipeline stalls.
+4. **Watch the cost of that execution in gem5.** [What you measure, and how](docs/en/gem5.md). [Walk through the chapters](docs/en/cases.md). Along the same kernel paths, follow cycles, cache misses, and pipeline stalls.
 5. **Then look at other architectures.** After the x86 path works, keep the kernel small and add RISC-V, then ARM, to see what belongs to one architecture and what belongs to the operating system itself.
 
 Work that is not on this path is listed in [the backlog](docs/en/backlog.md). Generating `rootfs/hdc-0.11.img` is there. It stays off the numbered steps.

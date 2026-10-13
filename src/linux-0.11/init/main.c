@@ -109,6 +109,14 @@ void main(void)		/* This really IS void, no error here. */
  */
  	ROOT_DEV = ORIG_ROOT_DEV;
  	drive_info = DRIVE_INFO;
+	/*
+	 * EXT_MEM_K is the BIOS figure, in kilobytes, for RAM above 1MB.
+	 * memory_end is that size plus the first megabyte, rounded down
+	 * to a page. The kernel only builds page tables for 16MB, so
+	 * anything the BIOS reported beyond that is ignored. The buffer
+	 * cache occupies the low part of what remains; process pages
+	 * are allocated above it.
+	 */
 	memory_end = (1<<20) + (EXT_MEM_K<<10);
 	memory_end &= 0xfffff000;
 	if (memory_end > 16*1024*1024)
@@ -133,6 +141,12 @@ void main(void)		/* This really IS void, no error here. */
 	buffer_init(buffer_memory_end);
 	hd_init();
 	floppy_init();
+	/*
+	 * STI, Set Interrupt Flag, sets IF. From this instruction on,
+	 * the timer IRQ can be delivered. move_to_user_mode drops to
+	 * CPL 3, and fork creates task 1, which runs init. Task 0 then
+	 * loops in pause, which calls schedule whenever it is current.
+	 */
 	sti();
 	move_to_user_mode();
 	if (!fork()) {		/* we count on this going ok */

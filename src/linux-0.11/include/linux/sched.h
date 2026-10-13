@@ -150,6 +150,15 @@ extern void wake_up(struct task_struct ** p);
  * Entry into gdt where to find first TSS. 0-nul, 1-cs, 2-ds, 3-syscall
  * 4-TSS0, 5-LDT0, 6-TSS1 etc ...
  */
+/*
+ * Each task owns two GDT slots: a TSS descriptor and an LDT descriptor.
+ * Task 0 starts at GDT index 4. Task n's TSS selector is n*16 + 32,
+ * and its LDT selector is the next descriptor. A selector's low 3 bits
+ * are the table indicator and the requested privilege; the rest is the
+ * index. LTR, Load Task Register, and LLDT, Load Local Descriptor
+ * Table, load the CPU's task register and local-table register from
+ * those selectors.
+ */
 #define FIRST_TSS_ENTRY 4
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
 #define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
@@ -167,6 +176,18 @@ __asm__("str %%ax\n\t" \
  * checking that n isn't the current task, in which case it does nothing.
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
+ */
+/*
+ * Hardware task switch. ECX holds the pointer to task n. If it is
+ * already current, the jump is skipped. Otherwise the TSS selector
+ * for n is stored beside a dummy offset and used as the operand of
+ * LJMP. A far jump whose selector names a TSS descriptor does not
+ * jump to an instruction: the CPU writes the outgoing task's
+ * registers into its TSS, loads CR3, the registers, and the LDT from
+ * the incoming TSS, and resumes at the EIP stored there. The
+ * instructions after LJMP therefore run only when this task is
+ * switched back to. CLTS clears CR0.TS so the coprocessor can be used
+ * without a fault when this task was the last one to use it.
  */
 #define switch_to(n) {\
 struct {long a,b;} __tmp; \
@@ -227,6 +248,11 @@ __base;})
 
 #define get_base(ldt) _get_base( ((char *)&(ldt)) )
 
+/*
+ * LSLL, Load Segment Limit, reads the limit field of a descriptor.
+ * The stored limit is the last valid offset, so the byte length is
+ * that value plus one.
+ */
 #define get_limit(segment) ({ \
 unsigned long __limit; \
 __asm__("lsll %1,%0\n\tincl %0":"=r" (__limit):"r" (segment)); \

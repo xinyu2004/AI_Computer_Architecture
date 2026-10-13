@@ -49,6 +49,13 @@ int copy_mem(int nr,struct task_struct * p)
 		panic("We don't support separate I&D");
 	if (data_limit < code_limit)
 		panic("Bad data_limit");
+	/*
+	 * Each task's code and data live in its LDT, at a base of
+	 * nr * 64MB. The offset of a given instruction is the same in
+	 * every task; the base is what makes task 1's linear addresses
+	 * start at 64MB. The page tables installed below map that
+	 * linear range back onto the physical pages the task owns.
+	 */
 	new_data_base = new_code_base = nr * 0x4000000;
 	p->start_code = new_code_base;
 	set_base(p->ldt[1],new_code_base);

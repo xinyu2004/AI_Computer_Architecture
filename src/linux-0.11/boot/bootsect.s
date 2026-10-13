@@ -19,6 +19,13 @@ ENDSEG   = SYSSEG + SYSSIZE
 /* 0x306 = major 3, minor 6 (/dev/hd6). tools/build overwrites this. */
 ROOT_DEV = 0x306
 
+/*
+ * BIOS enters here in real mode, CS:IP = 0000:7C00. A segment
+ * address is the linear address shifted right by 4, so BOOTSEG
+ * 0x07C0 is linear 0x7C00. The first act is to copy this 512-byte
+ * sector to 0x90000 and jump there, which frees 0x7C00 for the
+ * kernel load that follows.
+ */
 .global start
 start:
 	movw	$BOOTSEG, %ax
@@ -28,8 +35,8 @@ start:
 	movw	$256, %cx
 	subw	%si, %si
 	subw	%di, %di
-	rep; movsw
-	ljmp	$INITSEG, $go
+	rep; movsw		/* repeat a word copy CX times */
+	ljmp	$INITSEG, $go	/* far jump: reload CS and IP together */
 
 go:
 	movw	%cs, %ax
@@ -38,6 +45,12 @@ go:
 	movw	%ax, %ss
 	movw	$0xFF00, %sp
 
+/*
+ * INT 0x13 reads the floppy. AH=2 is "read sectors". Setup is the
+ * next four sectors and lands at 0x90200. The kernel image is then
+ * read to 0x10000 (SYSSEG). setup.s moves that image down to
+ * physical 0 after this sector has finished with the BIOS.
+ */
 load_setup:
 	movw	$0x0000, %dx
 	movw	$0x0002, %cx

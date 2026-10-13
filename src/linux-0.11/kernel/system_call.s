@@ -76,6 +76,20 @@ bad_sys_call:
 reschedule:
 	pushl $ret_from_sys_call
 	jmp _schedule
+/*
+ * INT 0x80 lands here. The CPU has already pushed EFLAGS, CS, and EIP,
+ * and has loaded CS from the gate (kernel code, selector 8). EAX is
+ * the call number. EBX, ECX, and EDX are the arguments; they are pushed
+ * so the C function sees them as arguments. DS and ES are switched to
+ * the kernel data selector 0x10. FS is set to 0x17, the user data
+ * selector in the current task's LDT, which is how the kernel reads
+ * and writes the caller's memory.
+ *
+ * On the way out, a task whose state is no longer RUNNING, or whose
+ * time slice (counter) has hit zero, jumps to schedule. IRET then
+ * pops EIP, CS, and EFLAGS. If the saved CS has RPL 3, it also pops
+ * the user ESP and SS, completing the return to user mode.
+ */
 .balign 4
 _system_call:
 	cld
@@ -173,6 +187,17 @@ _device_not_available:
 	popl %ebp
 	ret
 
+/*
+ * IRQ0, vector 0x20, from the programmable interval timer. The CPU
+ * pushes EFLAGS, CS, and EIP before this code runs. The pushes below
+ * complete the same frame a system call uses, so both paths share
+ * ret_from_sys_call. jiffies counts ticks. 0x20 written to port 0x20
+ * is the end-of-interrupt command to the master 8259; until it is
+ * sent, that controller will not raise another IRQ. The low two bits
+ * of the saved CS are the privilege the interrupt interrupted. do_timer
+ * charges the tick to user time or system time from that value, and
+ * only calls schedule when a user-mode slice has been used up.
+ */
 .balign 4
 _timer_interrupt:
 	push %ds		# save ds,es and put kernel data space

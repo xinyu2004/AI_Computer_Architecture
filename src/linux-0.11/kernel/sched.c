@@ -121,6 +121,14 @@ void schedule(void)
 
 /* this is the scheduler proper: */
 
+/*
+ * Pick the runnable task with the largest remaining time slice.
+ * counter is that slice, counted down by the timer. A slice of zero
+ * is skipped. If every runnable task has a zero slice, each task's
+ * counter is refreshed to half its remainder plus its priority, and
+ * the scan repeats. next == 0 means only the idle task can run.
+ * switch_to performs the actual register and address-space switch.
+ */
 	while (1) {
 		c = -1;
 		next = 0;

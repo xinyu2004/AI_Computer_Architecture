@@ -14,6 +14,14 @@
 .text
 .globl _idt,_gdt,_pg_dir,_tmp_floppy_area
 .globl startup_32
+/*
+ * Selector 0x10 is the data descriptor installed by setup.s.
+ * Loading DS/ES/FS/GS does not by itself change their hidden
+ * base and limit; the CPU reloads that cache from the GDT when
+ * the selector register is written. SS and ESP come from
+ * _stack_start via LSS, one instruction, so the stack is never
+ * visible half-updated.
+ */
 _pg_dir:
 startup_32:
 	movl $0x10,%eax
@@ -30,6 +38,12 @@ startup_32:
 	mov %ax,%fs
 	mov %ax,%gs
 	lss _stack_start,%esp
+/*
+ * If A20 is still off, address 0 and address 1MB are the same
+ * physical cell. The loop writes EAX at 0 and reads 1MB back.
+ * A match means the bit is wrapped, and the machine spins here
+ * rather than paging on top of aliased memory.
+ */
 	xorl %eax,%eax
 1:	incl %eax		# check that A20 really IS enabled
 	movl %eax,0x000000	# loop forever if it isn't
@@ -51,6 +65,12 @@ startup_32:
 
 /*
  * We depend on ET to be correct. This checks for 287/387.
+ */
+/*
+ * FNINIT resets the x87 unit without waiting for it. FSTSW writes
+ * its status word; a zero low byte means a coprocessor answered.
+ * The two bytes at the label below are FSETPM, which puts a 287
+ * into protected mode. A 387 ignores them.
  */
 check_x87:
 	fninit
@@ -195,6 +215,24 @@ ignore_int:
  * some kind of marker at them (search for "16Mb"), but I
  * won't guarantee that's all :-( )
  */
+/*
+ * Build a 32-bit, two-level page table for the first 16MB and turn
+ * paging on. Each page is 4KB. A page directory holds 1024 entries
+ * and covers 4MB per entry, so four page tables cover 16MB.
+ *
+ * The five pages at physical 0 are cleared first: the directory and
+ * the four tables. Directory entries then point at those tables with
+ * the low bits set to 7 (present, writable, user). The tables are
+ * filled from the top. EAX starts at 0xFFF007, the last page of the
+ * 16MB with the same three flag bits, and each step subtracts one
+ * page. The result is an identity map: linear address N translates
+ * to physical address N.
+ *
+ * CR3 receives the directory's physical address, which is 0. Bit 31
+ * of CR0 is PG. The RET is not only a return. It also serializes the
+ * pipeline, so the prefetcher does not keep using translations from
+ * before PG was set. The caller arranged for this RET to enter main.
+ */
 .balign 4
 setup_paging:
 	movl $1024*5,%ecx		/* 5 pages - pg_dir+4 page tables */
@@ -233,6 +271,14 @@ gdt_descr:
 	.balign 8
 _idt:	.fill 256,8,0		# idt is uninitialized
 
+/*
+ * Kernel GDT. Bytes, from the top of each quad: present, DPL 0,
+ * code or data, 32-bit, 4KB granularity, base 0, limit 0xFFF.
+ * With 4KB granularity that limit is 16MB-1. Selector 8 is the
+ * code segment (0x9A). Selector 0x10 is the writable data segment
+ * (0x92). User code and data are not here; each task carries them
+ * in its own LDT, and those selectors have the table bit set.
+ */
 _gdt:	.quad 0x0000000000000000	/* NULL descriptor */
 	.quad 0x00c09a0000000fff	/* 16Mb */
 	.quad 0x00c0920000000fff	/* 16Mb */

@@ -11,6 +11,15 @@
 
 .globl _page_fault
 
+/*
+ * Page fault, vector 14. The CPU pushes an error code and then the
+ * usual EFLAGS, CS, EIP. The error code's low bit is 0 when the
+ * faulting translation was not present, and 1 when the page was
+ * present but the access was not allowed (the write-protect case).
+ * CR2 holds the linear address that faulted. Swapping EAX with the
+ * error code puts that code where do_no_page and do_wp_page expect
+ * it, and leaves EAX saved on the stack for IRET.
+ */
 _page_fault:
 	xchgl %eax,(%esp)
 	pushl %ecx
