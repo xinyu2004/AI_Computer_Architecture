@@ -30,6 +30,12 @@ labs/qemu/launch.sh vnc
 
 QEMU listens on `127.0.0.1:5901`. Forward it with `ssh -L 5901:127.0.0.1:5901 <user>@<this-host>`, then open a VNC client on `localhost:5901`.
 
+## Step 3, machine state
+
+`bochs` provides the emulator and its internal debugger. `labs/bochs/launch.sh` starts the same floppy and hard disk as `labs/qemu/launch.sh`. The debugger prompt stays in that terminal. Commands there print registers, the GDT, the IDT, page tables, and the TSS. [What to look at](bochs.md).
+
+`bochs-sdl` provides the SDL window, which is the VGA console when a display is available. `bochsbios` provides `BIOS-bochs-legacy`. `vgabios` provides `vgabios.bin`. With no display, the main `bochs` package already includes the VNC console, on port 5900.
+
 ## Later steps
 
-Bochs is the step 3 tool, for registers, the GDT, the IDT, page tables, and the TSS. gem5 is the step 4 tool, for cycles and cache misses. `script/bootstrap.sh` does not install them yet.
+gem5 is the step 4 tool, for cycles and cache misses. `script/bootstrap.sh` does not install it yet.

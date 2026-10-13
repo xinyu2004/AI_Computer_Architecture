@@ -16,8 +16,13 @@ Step 2, run it
   qemu-system-x86    qemu-system-i386   labs/qemu/launch.sh opens this emulator
   gdb                gdb                F5, Linux 0.11, stops on the first instruction
 
+Step 3, machine state
+  bochs              bochs              labs/bochs/launch.sh, internal debugger
+  bochs-sdl          SDL window         the VGA console when a display is available
+  bochsbios          BIOS-bochs-legacy  firmware for that PC
+  vgabios            vgabios.bin        VGA firmware
+
 Not installed yet
-  Bochs              step 3             machine state
   gem5               step 4             cycles and cache misses
 
 See docs/en/tools.md.
@@ -39,4 +44,5 @@ case " ${ID:-} ${ID_LIKE:-} " in
 esac
 
 sudo apt-get update
-sudo apt-get install -y build-essential gcc-multilib qemu-system-x86 gdb
+sudo apt-get install -y build-essential gcc-multilib qemu-system-x86 gdb \
+	bochs bochs-sdl bochsbios vgabios

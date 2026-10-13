@@ -30,6 +30,12 @@ labs/qemu/launch.sh vnc
 
 QEMU 监听 `127.0.0.1:5901`。用 `ssh -L 5901:127.0.0.1:5901 <user>@<这台机器>` 转发该端口，再打开 `localhost:5901`。
 
+## 第 3 步，机器状态
+
+`bochs` 提供模拟器和它自带的调试器。`labs/bochs/launch.sh` 启动的软盘和硬盘与 `labs/qemu/launch.sh` 相同。调试器提示留在那个终端里，用来看寄存器、GDT、IDT、页表和 TSS。[看什么](bochs.md)。
+
+`bochs-sdl` 提供 SDL 窗口，有显示器时它就是 VGA 控制台。`bochsbios` 提供 `BIOS-bochs-legacy`。`vgabios` 提供 `vgabios.bin`。没有显示器时，`bochs` 主包里已经带了 VNC 控制台，端口是 5900。
+
 ## 后面的步骤
 
-Bochs 是第 3 步的工具，用来看寄存器、GDT、IDT、页表和 TSS。gem5 是第 4 步的工具，用来看周期和 cache miss。`script/bootstrap.sh` 现在还不安装它们。
+gem5 是第 4 步的工具，用来看周期和 cache miss。`script/bootstrap.sh` 现在还不安装它。
