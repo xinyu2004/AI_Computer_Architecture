@@ -4,7 +4,7 @@
 
 这个仓库面向想用 Linux 0.11 学习计算机体系结构的人。这份内核小到可以整份读完，写于 1991 年，面向 80386 和 PC 设备。学习时先把它接到当代计算机上，再顺着下面的顺序看下去。
 
-第 2 步之前，先运行一次 `script/bootstrap.sh`。[它安装什么，以及为什么](docs/zh/tools.md)。名字本身看不出作用的指令，例如 `lmsw`，集中在一页里：[这份内核里的指令](docs/zh/instructions.md)。
+第 2 步之前，先运行一次 `script/bootstrap.sh`。[它安装什么，以及为什么](docs/zh/tools.md)。名字本身看不出作用的指令，例如 `lmsw`，集中在一页里：[80386 内核里的指令](docs/zh/i386_instructions.md)。
 
 ## 步骤
 
@@ -12,7 +12,7 @@
 2. **在当代计算机上编译，并在 QEMU 里运行。** [这一步改了什么，以及为什么](docs/zh/build-and-qemu.md)。源码改到能用现在的工具链编译。改一行、重新编译，就可以观察操作系统在做什么：能否启动、系统调用是否返回、进程是否出现。
 3. **在 Bochs 里看机器状态。** [看什么，以及怎么看](docs/zh/bochs.md)。同一个系统进入保护模式、响应中断、切换任务时，观察寄存器、GDT、IDT、页表和 TSS 的变化。
 4. **在 gem5 里看执行代价。** [量什么，以及怎么量](docs/zh/gem5.md)。[按章节走一遍](docs/zh/cases.md)。沿同一段内核路径，观察周期、cache miss 和流水线停顿。
-5. **再看别的架构。** x86 走通之后，保持内核短小，先加入 RISC-V，再加入 ARM，对照哪些属于某一种架构，哪些是操作系统本身。
+5. **再看别的架构。** [virt 板上的 RV32](docs/zh/rv32.md)。x86 走通之后，保持内核短小，先加入 RISC-V，再加入 ARM，对照哪些属于某一种架构，哪些是操作系统本身。`src/rv32/` 是其中的第一份内核。
 
 不在这条路径上的工作记在 [backlog](docs/zh/backlog.md)。生成 `rootfs/hdc-0.11.img` 在那里，不进入上面的编号步骤。
 
@@ -35,15 +35,17 @@ SHA256：`660997a6b1f03ee5aadce0ac806ffa653dedf1dea6d82c6731f9c9ddf0092673`
 | 路径 | 作用 |
 | --- | --- |
 | `reference/linux-0.11/` | 冻结的原始内核 |
-| `src/linux-0.11/` | 要编译、要修改的内核 |
+| `src/linux-0.11/` | 要编译、要修改的 80386 内核 |
+| `src/rv32/` | 放在 80386 旁边的 RV32 内核 |
 | `rootfs/` | 根文件系统镜像 |
 | `images/` | 生成的启动镜像（不纳入 git） |
 | `script/bootstrap.sh` | 为当前步骤安装宿主工具 |
-| `labs/qemu/`、`labs/bochs/`、`labs/gem5/` | 各环境上的实验 |
+| `labs/qemu/`、`labs/bochs/`、`labs/gem5/` | 80386 上的实验 |
+| `labs/rv32/` | RV32 内核的 QEMU virt 启动脚本 |
 
 编辑器的文件树和搜索都不显示 `reference/`。对照 `src/linux-0.11/` 时，按这个路径打开。
 
-`src/linux-0.11/` 可以在当代计算机上编译。`labs/qemu/launch.sh` 在 QEMU 里启动它，shell 可以运行 `ls`。按 F5 并选择 **Linux 0.11**，会停在第一条指令上，在编辑器里单步。`labs/bochs/launch.sh` 在 Bochs 里打开同一套磁盘，那个终端里的调试器可以看 GDT、IDT、页表和 TSS。`labs/gem5/launch.sh` 在 gem5 的乱序 CPU 上运行 `setup_paging`，并打印周期、L1 miss 和 store queue 停顿。`labs/gem5/launch.sh timer` 继续进入内核，统计第一次 `_timer_interrupt`；没有根磁盘时，这次中断发生在 `panic("Unable to mount root")` 的自旋里。`labs/gem5/launch.sh schedule` 统计第一次 `_schedule`，它从任务 0 切到任务 1。`labs/gem5/launch.sh copy_page` 统计内联在 `_un_wp_page` 里的第一次 4KiB `rep movsl`。
+`src/linux-0.11/` 可以在当代计算机上编译。`labs/qemu/launch.sh` 在 QEMU 里启动它，shell 可以运行 `ls`。按 F5 并选择 **Linux 0.11**，会停在第一条指令上，在编辑器里单步。`labs/bochs/launch.sh` 在 Bochs 里打开同一套磁盘，那个终端里的调试器可以看 GDT、IDT、页表和 TSS。`labs/gem5/launch.sh` 在 gem5 的乱序 CPU 上运行 `setup_paging`，并打印周期、L1 miss 和 store queue 停顿。`labs/gem5/launch.sh timer` 继续进入内核，统计第一次 `_timer_interrupt`；没有根磁盘时，这次中断发生在 `panic("Unable to mount root")` 的自旋里。`labs/gem5/launch.sh schedule` 统计第一次 `_schedule`，它从任务 0 切到任务 1。`labs/gem5/launch.sh copy_page` 统计内联在 `_un_wp_page` 里的第一次 4KiB `rep movsl`。`labs/rv32/launch.sh` 编译 RV32 内核，并在 QEMU 的 virt 板上启动它。F5 仍然是 80386 的会话。
 
 `rootfs/hdc-0.11.img` 来自 [hello-os/linux-0.11](https://github.com/hello-os/linux-0.11) 的 `rootfs/hdc-0.11.img.xz`。SHA256：`c83a9837f3f804882a76756f2ff46349467bdf66ed44e301a6c5e124f414b6d1`。大小：127631360 字节。生成的 `Image` 不纳入 git。
 

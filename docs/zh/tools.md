@@ -43,3 +43,9 @@ QEMU 监听 `127.0.0.1:5901`。用 `ssh -L 5901:127.0.0.1:5901 <user>@<这台机
 gem5 本身不是 apt 包。`labs/gem5/build.sh` 把固定的 v25.1.0.1 克隆到 `.gem5/`，打上 `labs/gem5/linux-0.11-x86.patch`，并编译出 `.gem5/build/X86/gem5.opt`。这个目录不纳入 git。
 
 `labs/gem5/launch.sh` 加载 `src/linux-0.11/tools/system.elf` 并运行 `setup_paging`。它模拟的机器写在 `labs/gem5/linux-0.11-x86.py` 里。`labs/gem5/launch.sh timer`、`schedule` 和 `copy_page` 从 `startup_32` 开始，分别统计第一次时钟中断、第一次 `_schedule`，以及第一次内联的 `copy_page`。每次都打印周期、L1 miss 和流水线停顿。[量什么](gem5.md)。编译时可能会警告 GCC 比 gem5 源码里写的范围更新。它编出来的二进制就是 `launch.sh` 运行的那个。
+
+## 第 5 步，RV32
+
+`gcc-riscv64-unknown-elf` 提供 `riscv64-unknown-elf-gcc`。同一个编译器带有 32 位 multilib。`make -C src/rv32` 使用 `-march=rv32gc -mabi=ilp32`，所以目标文件是 RV32，尽管命令名字里写着 riscv64。
+
+`qemu-system-riscv` 提供 `qemu-system-riscv32`。`labs/rv32/launch.sh` 用 `-machine virt -cpu rv32` 启动这个模拟器。如果某个 Debian 或 Ubuntu 源里这个二进制还装在 `qemu-system-misc` 中，`script/bootstrap.sh` 会改装那个包。[RV32 内核做什么](rv32.md)。

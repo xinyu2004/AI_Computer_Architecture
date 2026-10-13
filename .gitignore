@@ -15,6 +15,9 @@ core
 **/tools/system
 **/tools/system.elf
 **/tools/build
+
+# RV32 kernel image. labs/rv32/launch.sh builds it.
+src/rv32/kernel.elf
 # cpp output of keyboard.S; the source is keyboard.S
 **/kernel/chr_drv/keyboard.s
 

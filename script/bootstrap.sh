@@ -27,6 +27,16 @@ Step 4, cycles and misses
   python3-venv       python3 -m venv    scons is installed in .gem5/.venv
   m4                 m4                 the gem5 build runs m4
 
+Step 5, RV32
+  gcc-riscv64-unknown-elf
+                     riscv64-unknown-elf-gcc
+                                        build src/rv32 for RV32
+  qemu-system-riscv  qemu-system-riscv32
+                                        labs/rv32/launch.sh opens this emulator
+
+If the archive has no qemu-system-riscv package, qemu-system-misc is
+installed instead.
+
 gem5 itself is not an apt package. labs/gem5/build.sh clones v25.1.0.1
 into .gem5/ and compiles it. See docs/en/tools.md.
 EOF
@@ -47,6 +57,11 @@ case " ${ID:-} ${ID_LIKE:-} " in
 esac
 
 sudo apt-get update
+riscv_qemu=qemu-system-riscv
+if ! apt-cache show "$riscv_qemu" >/dev/null 2>&1; then
+	riscv_qemu=qemu-system-misc
+fi
 sudo apt-get install -y build-essential gcc-multilib qemu-system-x86 gdb \
 	bochs bochs-sdl bochsbios vgabios \
-	python3-dev python3-venv m4
+	python3-dev python3-venv m4 \
+	gcc-riscv64-unknown-elf "$riscv_qemu"

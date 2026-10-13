@@ -43,3 +43,9 @@ QEMU listens on `127.0.0.1:5901`. Forward it with `ssh -L 5901:127.0.0.1:5901 <u
 gem5 itself is not an apt package. `labs/gem5/build.sh` clones the pinned release v25.1.0.1 into `.gem5/`, applies `labs/gem5/linux-0.11-x86.patch`, and compiles `.gem5/build/X86/gem5.opt`. That directory stays out of git.
 
 `labs/gem5/launch.sh` loads `src/linux-0.11/tools/system.elf` and runs `setup_paging`. The machine it simulates is described in `labs/gem5/linux-0.11-x86.py`. `labs/gem5/launch.sh timer`, `schedule`, and `copy_page` start at `startup_32` and count the first timer interrupt, the first `_schedule`, and the first inlined `copy_page`. Each prints cycles, L1 misses, and pipeline stalls. [What those runs measure](gem5.md). The build can print a warning that GCC is newer than the range named in the gem5 sources. The binary it produces is the one `launch.sh` runs.
+
+## Step 5, RV32
+
+`gcc-riscv64-unknown-elf` provides `riscv64-unknown-elf-gcc`. The same compiler has a 32-bit multilib. `make -C src/rv32` uses `-march=rv32gc -mabi=ilp32`, so the objects are RV32 even though the command name says riscv64.
+
+`qemu-system-riscv` provides `qemu-system-riscv32`. `labs/rv32/launch.sh` starts that emulator with `-machine virt -cpu rv32`. On a Debian or Ubuntu archive that still ships this binary inside `qemu-system-misc`, `script/bootstrap.sh` installs that package instead. [What the RV32 kernel does](rv32.md).
