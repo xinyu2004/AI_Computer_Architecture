@@ -41,7 +41,9 @@ SHA256：`660997a6b1f03ee5aadce0ac806ffa653dedf1dea6d82c6731f9c9ddf0092673`
 | `script/bootstrap.sh` | 为当前步骤安装宿主工具 |
 | `labs/qemu/`、`labs/bochs/`、`labs/gem5/` | 各环境上的实验 |
 
-`src/linux-0.11/` 可以在当代计算机上编译。`labs/qemu/launch.sh` 在 QEMU 里启动它，shell 可以运行 `ls`。Bochs 和 gem5 还没有开始。
+编辑器的文件树和搜索都不显示 `reference/`。对照 `src/linux-0.11/` 时，按这个路径打开。
+
+`src/linux-0.11/` 可以在当代计算机上编译。`labs/qemu/launch.sh` 在 QEMU 里启动它，shell 可以运行 `ls`。按 F5 并选择 **Linux 0.11**，会停在第一条指令上，在编辑器里单步。Bochs 和 gem5 还没有开始。
 
 `rootfs/hdc-0.11.img` 来自 [hello-os/linux-0.11](https://github.com/hello-os/linux-0.11) 的 `rootfs/hdc-0.11.img.xz`。SHA256：`c83a9837f3f804882a76756f2ff46349467bdf66ed44e301a6c5e124f414b6d1`。大小：127631360 字节。生成的 `Image` 不纳入 git。
 

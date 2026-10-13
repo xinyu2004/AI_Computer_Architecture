@@ -10,6 +10,8 @@ tmp.s
 core
 **/boot/bootsect
 **/boot/setup
+**/boot/bootsect.elf
+**/boot/setup.elf
 **/tools/system
 **/tools/system.elf
 **/tools/build

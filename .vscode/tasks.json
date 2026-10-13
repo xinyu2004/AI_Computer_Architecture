@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "qemu-gdb",
+            "type": "shell",
+            "command": "${workspaceFolder}/labs/qemu/qemu-gdb.sh",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "qemu-gdb",
+                "pattern": {
+                    "regexp": "^qemu-gdb: (.+)$",
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Display:",
+                    "endsPattern": "GDB listening on 127\\.0\\.0\\.1:1234"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "showReuseMessage": false
+            }
+        }
+    ]
+}

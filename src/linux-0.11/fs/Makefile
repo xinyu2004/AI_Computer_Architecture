@@ -1,9 +1,9 @@
 
 AR	= ar
-AS	= as --32
+AS	= as --32 -g
 LD	= ld -m elf_i386
 CC	= gcc -m32
-CFLAGS	= -std=gnu89 -m32 -Wall -O2 -fomit-frame-pointer -fno-builtin -fleading-underscore -fno-stack-protector -fno-pic -fno-pie -fcf-protection=none -march=i386 -mpreferred-stack-boundary=2 -fno-asynchronous-unwind-tables -nostdinc -I../include
+CFLAGS	= -std=gnu89 -m32 -Wall -O2 -g -fomit-frame-pointer -fno-builtin -fleading-underscore -fno-stack-protector -fno-pic -fno-pie -fcf-protection=none -march=i386 -mpreferred-stack-boundary=2 -fno-asynchronous-unwind-tables -nostdinc -I../include
 CPP	= gcc -m32 -E -nostdinc -I../include
 
 .c.s:

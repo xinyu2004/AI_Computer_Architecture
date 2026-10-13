@@ -6,11 +6,12 @@ RAMDISK = #-DRAMDISK=512
 
 # Contemporary 32-bit toolchain. The 1991 names (as86, gas, gld) are gone,
 # and the host compiler defaults to 64-bit ELF.
-AS	= as --32
+AS	= as --32 -g
 LD	= ld -m elf_i386
 LDFLAGS	= -T tools/kernel.ld
 CC	= gcc -m32 $(RAMDISK)
-CFLAGS	= -std=gnu89 -m32 -Wall -O2 -fomit-frame-pointer -fno-builtin -fleading-underscore -fno-stack-protector -fno-pic -fno-pie -fcf-protection=none -march=i386 -mpreferred-stack-boundary=2 -fno-asynchronous-unwind-tables
+# -g stays in the ELF for the debugger. objcopy drops it from the raw Image.
+CFLAGS	= -std=gnu89 -m32 -Wall -O2 -g -fomit-frame-pointer -fno-builtin -fleading-underscore -fno-stack-protector -fno-pic -fno-pie -fcf-protection=none -march=i386 -mpreferred-stack-boundary=2 -fno-asynchronous-unwind-tables
 CPP	= gcc -m32 -E -nostdinc -Iinclude
 OBJCOPY	= objcopy -O binary
 
@@ -83,11 +84,13 @@ lib/lib.a:
 
 boot/setup: boot/setup.s
 	$(AS) -o boot/setup.o boot/setup.s
-	$(LD) -Ttext 0 -N --oformat binary -o boot/setup boot/setup.o
+	$(LD) -Ttext 0 -e start -N --oformat binary -o boot/setup boot/setup.o
+	$(LD) -Ttext 0 -e start -o boot/setup.elf boot/setup.o
 
 boot/bootsect:	boot/bootsect.s
 	$(AS) -o boot/bootsect.o boot/bootsect.s
-	$(LD) -Ttext 0 -N --oformat binary -o boot/bootsect boot/bootsect.o
+	$(LD) -Ttext 0 -e start -N --oformat binary -o boot/bootsect boot/bootsect.o
+	$(LD) -Ttext 0x7c00 -e start -o boot/bootsect.elf boot/bootsect.o
 
 tmp.s:	boot/bootsect.s tools/system
 	(echo -n "SYSSIZE = (";ls -l tools/system | grep system \
@@ -96,6 +99,7 @@ tmp.s:	boot/bootsect.s tools/system
 
 clean:
 	rm -f Image System.map tmp_make core boot/bootsect boot/setup
+	rm -f boot/bootsect.elf boot/setup.elf
 	rm -f init/*.o tools/system tools/system.elf tools/build boot/*.o
 	(cd mm;make clean)
 	(cd fs;make clean)

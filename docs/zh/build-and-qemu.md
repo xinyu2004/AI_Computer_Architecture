@@ -72,7 +72,23 @@ make -C src/linux-0.11
 labs/qemu/launch.sh
 ```
 
-内核把控制台写在 VGA 内存里，所以留着 QEMU 的窗口。`-nographic` 会是空白。脚本执行的是：
+内核把控制台写在 VGA 内存里。`-nographic` 会是空白。本机桌面会打开 GTK 窗口。经 SSH 转发 X11 时打开 SDL 窗口：转发过来的显示编号从 10 开始（`localhost:10.0`），脚本以此来和本机的 `:0` 区分。这条路径同时关闭 OpenGL，从而避开 XLaunch 这类 X 服务器打出的 GTK 显示器警告。
+
+窗口没有出来时，用 VNC 启动同一台机器：
+
+```bash
+labs/qemu/launch.sh vnc
+```
+
+这时 QEMU 监听 `127.0.0.1:5901`。在你坐着的那台电脑上转发该端口，再用 VNC 客户端打开 `localhost:5901`：
+
+```bash
+ssh -L 5901:127.0.0.1:5901 <user>@<这台机器>
+```
+
+想改掉自动选择时，同一个脚本也接受 `gtk` 或 `sdl`。没有 `DISPLAY`、也没有 Wayland 显示时，`labs/qemu/launch.sh` 自己就会选 VNC。
+
+硬盘和软盘参数始终是：
 
 ```bash
 qemu-system-i386 -m 16M -boot a -nic none \
@@ -80,6 +96,26 @@ qemu-system-i386 -m 16M -boot a -nic none \
   -drive file=rootfs/hdc-0.11.img,if=ide,format=raw,index=0
 ```
 
-窗口里会出现 `[/usr/root]#`。输入 `ls /`，列出 `bin`、`dev`、`etc`、`shoelace`、`usr` 和 `var`。
+控制台会出现 `[/usr/root]#`。输入 `ls /`，列出 `bin`、`dev`、`etc`、`shoelace`、`usr` 和 `var`。
+
+## 调试
+
+单独运行 `labs/qemu/launch.sh` 和调试是两件事。脚本负责把系统启动到 shell。单步和寄存器在编辑器里，暂停着的 QEMU 窗口本身没有这些信息。
+
+按 F5，选择 **Linux 0.11**。`.vscode/tasks.json` 在后台启动同一个 `launch.sh`，并暂停 CPU。`.vscode/launch.json` 把 GDB 连到 `127.0.0.1:1234`，载入符号，停在这个系统的第一条指令：
+
+```
+bootsect.s: movw $BOOTSEG, %ax
+```
+
+这条指令在 `0x7C00`。断点是硬件断点，BIOS 把引导扇区载入内存之后它还在。会话停住时，工具栏是继续而不是暂停，这时才能单步。监视里的程序计数器写 `$pc`，不要写 `pc`。QEMU 窗口和单独运行 `launch.sh` 用同一套选择：本机桌面是 GTK，SSH 转发的 X11 是 SDL，没有显示器时是 VNC。源码、单步和寄存器在编辑器里。
+
+`boot/bootsect.elf` 对应跑在 `0x7C00` 的指令。从第一条 `movw` 单步，可以走过那段把自己复制走的循环。接下来 `ljmp` 到 `0x9000`，段地址变了。GDB 之后只报告段内偏移，`bootsect.s` 后面的行就对不上了。
+
+`boot/setup.elf` 放在 `0x90200`，对应 `setup.s`。`tools/system.elf` 对应物理地址 0 的 `head.s` 和 C 源码，保护模式从这里开始。C 的名字保留前导下划线，所以 C 里的内核入口是 `_main`。这份符号先不载入，它的地址范围盖住 `0x7C00`，会把引导扇区挡住。
+
+`-g` 留在这些 ELF 里。软盘 `Image` 仍是纯二进制，编译仍是 `-O2`，所以后面的 C 源码行有时会被跳过。BIOS 没有符号。
+
+如果 F5 提示磁盘被锁住，说明已经有一个 QEMU 窗口打开着 `rootfs/hdc-0.11.img`。关掉它，再开始这次调试。单独运行 `labs/qemu/launch.sh` 不会暂停，也不会打开 GDB 端口。
 
 `diff -rq reference/linux-0.11 src/linux-0.11` 看到的是上面的工具链、引导语法、镜像打包和编译器修正。调度、分页和系统调用本身仍是 1991 年的代码。Bochs 和 gem5 是后面的步骤。

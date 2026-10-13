@@ -18,7 +18,17 @@ script/bootstrap.sh
 
 ## 第 2 步，运行
 
-`qemu-system-x86` 提供 `qemu-system-i386`。`labs/qemu/launch.sh` 启动这个模拟器，把 `Image` 当作软盘，把 `rootfs/hdc-0.11.img` 当作第一块硬盘。控制台是 QEMU 的窗口。
+`qemu-system-x86` 提供 `qemu-system-i386`。`labs/qemu/launch.sh` 启动这个模拟器，把 `Image` 当作软盘，把 `rootfs/hdc-0.11.img` 当作第一块硬盘。本机桌面用 GTK 窗口，SSH 转发的 X11 用 SDL 窗口。
+
+`gdb` 是编辑器使用的调试器。按 F5，选择 **Linux 0.11**。它启动的机器和 `labs/qemu/launch.sh` 相同，CPU 暂停，并停在 `bootsect.s` 的第一条指令。源码、单步和寄存器都在编辑器里。单独运行 `labs/qemu/launch.sh` 仍然直接进入 shell。
+
+窗口没有出来时，改用 VNC。客户端装在你坐着的那台电脑上：
+
+```bash
+labs/qemu/launch.sh vnc
+```
+
+QEMU 监听 `127.0.0.1:5901`。用 `ssh -L 5901:127.0.0.1:5901 <user>@<这台机器>` 转发该端口，再打开 `localhost:5901`。
 
 ## 后面的步骤
 

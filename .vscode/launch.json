@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Linux 0.11",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "qemu-gdb",
+            "program": "${workspaceFolder}/src/linux-0.11/boot/bootsect.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "miDebuggerServerAddress": "localhost:1234",
+            "launchCompleteCommand": "exec-continue",
+            "stopAtEntry": true,
+            "setupCommands": [
+                {
+                    "description": "boot.gdb uses paths from the repository root",
+                    "text": "cd ${workspaceFolder}"
+                }
+            ],
+            "postRemoteConnectCommands": [
+                {
+                    "description": "Hardware breakpoints require the QEMU connection",
+                    "text": "source labs/qemu/boot.gdb"
+                }
+            ]
+        }
+    ]
+}

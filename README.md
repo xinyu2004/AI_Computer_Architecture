@@ -45,7 +45,9 @@ To compare a new download with this tree, check that SHA256, unpack the tarball,
 | `labs/qemu/` `labs/bochs/` `labs/gem5/` | Experiments for each environment            |
 
 
-`src/linux-0.11/` builds on a contemporary host. `labs/qemu/launch.sh` boots it in QEMU, and the shell can run `ls`. Bochs and gem5 are not set up yet.
+The editor hides `reference/` from the file tree and from search. Open that path when comparing it with `src/linux-0.11/`.
+
+`src/linux-0.11/` builds on a contemporary host. `labs/qemu/launch.sh` boots it in QEMU, and the shell can run `ls`. Press F5 and choose **Linux 0.11** to stop on the first instruction and step in the editor. Bochs and gem5 are not set up yet.
 
 `rootfs/hdc-0.11.img` is the teaching disk from [hello-os/linux-0.11](https://github.com/hello-os/linux-0.11) `rootfs/hdc-0.11.img.xz`. SHA256: `c83a9837f3f804882a76756f2ff46349467bdf66ed44e301a6c5e124f414b6d1`. Size: 127631360 bytes. The generated `Image` is not kept in git.
 

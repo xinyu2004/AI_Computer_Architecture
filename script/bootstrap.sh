@@ -14,6 +14,7 @@ Step 2, build the kernel
 
 Step 2, run it
   qemu-system-x86    qemu-system-i386   labs/qemu/launch.sh opens this emulator
+  gdb                gdb                F5, Linux 0.11, stops on the first instruction
 
 Not installed yet
   Bochs              step 3             machine state
@@ -38,4 +39,4 @@ case " ${ID:-} ${ID_LIKE:-} " in
 esac
 
 sudo apt-get update
-sudo apt-get install -y build-essential gcc-multilib qemu-system-x86
+sudo apt-get install -y build-essential gcc-multilib qemu-system-x86 gdb

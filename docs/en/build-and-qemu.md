@@ -72,7 +72,23 @@ Boot that image as the floppy and `rootfs/hdc-0.11.img` as the first hard disk:
 labs/qemu/launch.sh
 ```
 
-The kernel writes the console to VGA memory, so leave QEMU's window open. `-nographic` stays blank. The script runs:
+The kernel writes the console to VGA memory. `-nographic` stays blank. On a local desktop this opens a GTK window. Over SSH X11 forwarding it opens an SDL window: forwarded displays are numbered 10 and up (`localhost:10.0`), which is how the script tells them from a local `:0`. That path also turns OpenGL off, so an X server such as XLaunch does not hit the GTK monitor warning.
+
+When that window does not appear, start the same machine over VNC:
+
+```bash
+labs/qemu/launch.sh vnc
+```
+
+QEMU then listens on `127.0.0.1:5901`. From the computer you are sitting at, forward that port and open a VNC client on `localhost:5901`:
+
+```bash
+ssh -L 5901:127.0.0.1:5901 <user>@<this-host>
+```
+
+The same script accepts `gtk` or `sdl` when you want to override the automatic choice. With no `DISPLAY` and no Wayland display, `labs/qemu/launch.sh` already selects VNC.
+
+The drives are always:
 
 ```bash
 qemu-system-i386 -m 16M -boot a -nic none \
@@ -80,6 +96,26 @@ qemu-system-i386 -m 16M -boot a -nic none \
   -drive file=rootfs/hdc-0.11.img,if=ide,format=raw,index=0
 ```
 
-The window reaches `[/usr/root]#`. Typing `ls /` lists `bin`, `dev`, `etc`, `shoelace`, `usr`, and `var`.
+The console reaches `[/usr/root]#`. Typing `ls /` lists `bin`, `dev`, `etc`, `shoelace`, `usr`, and `var`.
+
+## Debug
+
+Running `labs/qemu/launch.sh` and debugging are separate. The script boots to the shell. Single-step and registers stay in the editor, because a paused QEMU window has neither.
+
+Press F5 and choose **Linux 0.11**. `.vscode/tasks.json` starts the same `launch.sh` in the background and pauses the CPU. `.vscode/launch.json` connects GDB to `127.0.0.1:1234`, loads the symbols, and stops on the first instruction of this system:
+
+```
+bootsect.s: movw $BOOTSEG, %ax
+```
+
+That instruction is at `0x7C00`. The breakpoint is a hardware breakpoint, so it is still there after the BIOS loads the boot sector. Stepping works once the session is paused: the toolbar shows continue, rather than pause. In the watch view the program counter is `$pc`, not `pc`. The QEMU window uses the same display choice as `launch.sh`: GTK on a local desktop, SDL over SSH X11, VNC when there is no display. Source, stepping, and registers are in the editor.
+
+`boot/bootsect.elf` matches the instructions that run at `0x7C00`. Single-step from that first `movw` covers the copy loop. The following `ljmp` to `0x9000` changes the segment. GDB then reports only the offset inside the segment, so the later lines of `bootsect.s` do not line up.
+
+`boot/setup.elf` is placed at `0x90200` for `setup.s`. `tools/system.elf` matches `head.s` and the C sources at physical address 0, where protected mode begins. C names keep the leading underscore, so the kernel entry in C is `_main`. That file stays unloaded at this stop: its address range covers `0x7C00` and would hide the boot sector.
+
+`-g` stays in those ELF files. The floppy `Image` is still the raw binary, and the compiler is still `-O2`, so later C lines can be skipped. BIOS has no symbols.
+
+If F5 reports that the disk is locked, a QEMU window is already open on `rootfs/hdc-0.11.img`. Close it and start the debug session again. `labs/qemu/launch.sh` on its own does not pause and does not open the GDB port.
 
 `diff -rq reference/linux-0.11 src/linux-0.11` shows the toolchain, boot-syntax, image-packing, and compiler fixes above. Scheduling, paging, and the system calls themselves are still the 1991 code. Bochs and gem5 are the next steps.
