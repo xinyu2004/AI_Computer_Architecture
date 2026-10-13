@@ -11,7 +11,7 @@
 1. **从原版读起。** `reference/linux-0.11/` 保存未经修改的 Linux 0.11。后面的改动都回到这里对照。
 2. **在当代计算机上编译，并在 QEMU 里运行。** [这一步改了什么，以及为什么](docs/zh/build-and-qemu.md)。源码改到能用现在的工具链编译。改一行、重新编译，就可以观察操作系统在做什么：能否启动、系统调用是否返回、进程是否出现。
 3. **在 Bochs 里看机器状态。** [看什么，以及怎么看](docs/zh/bochs.md)。同一个系统进入保护模式、响应中断、切换任务时，观察寄存器、GDT、IDT、页表和 TSS 的变化。
-4. **在 gem5 里看执行代价。** 沿同一段内核路径，观察周期、cache miss 和流水线停顿。
+4. **在 gem5 里看执行代价。** [量什么，以及怎么量](docs/zh/gem5.md)。沿同一段内核路径，观察周期、cache miss 和流水线停顿。
 5. **再看别的架构。** x86 走通之后，保持内核短小，先加入 RISC-V，再加入 ARM，对照哪些属于某一种架构，哪些是操作系统本身。
 
 不在这条路径上的工作记在 [backlog](docs/zh/backlog.md)。生成 `rootfs/hdc-0.11.img` 在那里，不进入上面的编号步骤。
@@ -43,7 +43,7 @@ SHA256：`660997a6b1f03ee5aadce0ac806ffa653dedf1dea6d82c6731f9c9ddf0092673`
 
 编辑器的文件树和搜索都不显示 `reference/`。对照 `src/linux-0.11/` 时，按这个路径打开。
 
-`src/linux-0.11/` 可以在当代计算机上编译。`labs/qemu/launch.sh` 在 QEMU 里启动它，shell 可以运行 `ls`。按 F5 并选择 **Linux 0.11**，会停在第一条指令上，在编辑器里单步。`labs/bochs/launch.sh` 在 Bochs 里打开同一套磁盘，那个终端里的调试器可以看 GDT、IDT、页表和 TSS。gem5 还没有开始。
+`src/linux-0.11/` 可以在当代计算机上编译。`labs/qemu/launch.sh` 在 QEMU 里启动它，shell 可以运行 `ls`。按 F5 并选择 **Linux 0.11**，会停在第一条指令上，在编辑器里单步。`labs/bochs/launch.sh` 在 Bochs 里打开同一套磁盘，那个终端里的调试器可以看 GDT、IDT、页表和 TSS。`labs/gem5/launch.sh` 在 gem5 的乱序 CPU 上运行 `setup_paging`，并打印周期、L1 miss 和 store queue 停顿。`labs/gem5/launch.sh timer` 继续进入内核，统计第一次 `_timer_interrupt`；没有根磁盘时，这次中断发生在 `panic("Unable to mount root")` 的自旋里。`labs/gem5/launch.sh schedule` 统计第一次 `_schedule`，它从任务 0 切到任务 1。`labs/gem5/launch.sh copy_page` 统计内联在 `_un_wp_page` 里的第一次 4KiB `rep movsl`。
 
 `rootfs/hdc-0.11.img` 来自 [hello-os/linux-0.11](https://github.com/hello-os/linux-0.11) 的 `rootfs/hdc-0.11.img.xz`。SHA256：`c83a9837f3f804882a76756f2ff46349467bdf66ed44e301a6c5e124f414b6d1`。大小：127631360 字节。生成的 `Image` 不纳入 git。
 

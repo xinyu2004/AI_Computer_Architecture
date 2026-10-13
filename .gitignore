@@ -30,3 +30,6 @@ rootfs/hdc-0.11.img
 # Later simulator output
 m5out/
 *.log
+
+# gem5 source and build. labs/gem5/build.sh clones the pinned release here.
+.gem5/

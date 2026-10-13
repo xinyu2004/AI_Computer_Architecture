@@ -22,10 +22,13 @@ Step 3, machine state
   bochsbios          BIOS-bochs-legacy  firmware for that PC
   vgabios            vgabios.bin        VGA firmware
 
-Not installed yet
-  gem5               step 4             cycles and cache misses
+Step 4, cycles and misses
+  python3-dev        Python.h           gem5 embeds this Python
+  python3-venv       python3 -m venv    scons is installed in .gem5/.venv
+  m4                 m4                 the gem5 build runs m4
 
-See docs/en/tools.md.
+gem5 itself is not an apt package. labs/gem5/build.sh clones v25.1.0.1
+into .gem5/ and compiles it. See docs/en/tools.md.
 EOF
 
 if [ -r /etc/os-release ]; then
@@ -45,4 +48,5 @@ esac
 
 sudo apt-get update
 sudo apt-get install -y build-essential gcc-multilib qemu-system-x86 gdb \
-	bochs bochs-sdl bochsbios vgabios
+	bochs bochs-sdl bochsbios vgabios \
+	python3-dev python3-venv m4

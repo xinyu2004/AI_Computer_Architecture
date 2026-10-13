@@ -1,0 +1,1115 @@
+diff --git a/src/arch/x86/faults.cc b/src/arch/x86/faults.cc
+index fce92b1..5d93dd6 100644
+--- a/src/arch/x86/faults.cc
++++ b/src/arch/x86/faults.cc
+@@ -85,9 +85,11 @@ X86FaultBase::invoke(ThreadContext *tc, const StaticInstPtr &inst)
+     if (errorCode != (uint64_t)(-1)) {
+         if (m5reg.mode == LongMode) {
+             entry = extern_label_longModeInterruptWithError;
+-        } else {
+-            panic("Legacy mode interrupts with error codes "
++        } else if (m5reg.submode == RealMode) {
++            panic("Real mode interrupts with error codes "
+                     "aren't implemented.");
++        } else {
++            entry = extern_label_legacyModeInterruptWithError;
+         }
+         tc->setReg(intRegMicro(15), errorCode);
+     }
+diff --git a/src/arch/x86/fs_workload.cc b/src/arch/x86/fs_workload.cc
+index c95754a..fd59347 100644
+--- a/src/arch/x86/fs_workload.cc
++++ b/src/arch/x86/fs_workload.cc
+@@ -38,7 +38,17 @@
+ 
+ #include "arch/x86/fs_workload.hh"
+ 
++#include <cstring>
++
+ #include "arch/x86/bios/acpi.hh"
++#include "arch/x86/interrupts.hh"
++#include "arch/x86/intmessage.hh"
++#include "arch/x86/regs/int.hh"
++#include "base/statistics.hh"
++#include "cpu/base.hh"
++#include "dev/x86/i8259.hh"
++#include "mem/translating_port_proxy.hh"
++#include "sim/sim_object.hh"
+ #include "arch/x86/bios/intelmp.hh"
+ #include "arch/x86/bios/smbios.hh"
+ #include "arch/x86/faults.hh"
+@@ -154,6 +164,510 @@ FsWorkload::addExitOnKernelOopsEvent()
+ }
+ 
+ 
++namespace
++{
++
++// Fires when setup_paging's ret lands on the hlt planted below.
++class I386HaltExit : public PCEvent
++{
++  public:
++    I386HaltExit(PCEventScope *q, Addr pc)
++        : PCEvent(q, "setup_paging returned", pc)
++    {}
++
++    void
++    process(ThreadContext *tc) override
++    {
++        exitSimLoop("setup_paging returned", 0);
++    }
++};
++
++class I386TimerExit : public PCEvent
++{
++  public:
++    I386TimerExit(PCEventScope *q, Addr pc)
++        : PCEvent(q, "timer_interrupt returned", pc)
++    {}
++
++    void
++    process(ThreadContext *tc) override
++    {
++        exitSimLoop("timer_interrupt returned", 0);
++    }
++};
++
++} // anonymous namespace
++
++class I386TimerEntry : public PCEvent
++{
++  public:
++    I386TimerEntry(PCEventScope *q, Addr pc, FsWorkload *workload);
++
++    void process(ThreadContext *tc) override;
++
++  private:
++    FsWorkload *workload;
++};
++
++void
++FsWorkload::onTimerInterruptEntry(ThreadContext *tc)
++{
++    if (timerExitPcEvent != nullptr)
++        return;
++
++    // The PC event runs when the PC becomes _timer_interrupt, before
++    // `push %ds`. The frame built by the interrupt microcode is
++    // EIP, CS, EFLAGS, so the return offset is at ESP.
++    const Addr esp = tc->getReg(int_reg::Rsp);
++    uint32_t ret_eip = 0;
++    TranslatingPortProxy proxy(tc);
++    proxy.readBlob(esp, &ret_eip, sizeof(ret_eip));
++    ret_eip = letoh(ret_eip);
++
++    statistics::reset();
++    timerExitPcEvent = new I386TimerExit(tc, ret_eip);
++    inform("timer interrupt entered, counters restarted, "
++           "return EIP=%#x.\n", ret_eip);
++}
++
++I386TimerEntry::I386TimerEntry(PCEventScope *q, Addr pc, FsWorkload *workload)
++    : PCEvent(q, "timer_interrupt entered", pc), workload(workload)
++{}
++
++void
++I386TimerEntry::process(ThreadContext *tc)
++{
++    workload->onTimerInterruptEntry(tc);
++}
++
++class I386CountedExit : public PCEvent
++{
++  public:
++    I386CountedExit(PCEventScope *q, Addr pc, const char *cause)
++        : PCEvent(q, cause, pc), cause(cause)
++    {}
++
++    void
++    process(ThreadContext *tc) override
++    {
++        exitSimLoop(cause, 0);
++    }
++
++  private:
++    const char *cause;
++};
++
++class I386ScheduleEntry : public PCEvent
++{
++  public:
++    I386ScheduleEntry(PCEventScope *q, Addr pc, FsWorkload *workload)
++        : PCEvent(q, "schedule entered", pc), workload(workload)
++    {}
++
++    void process(ThreadContext *tc) override;
++
++  private:
++    FsWorkload *workload;
++};
++
++class I386ScheduleLjmp : public PCEvent
++{
++  public:
++    I386ScheduleLjmp(PCEventScope *q, Addr pc, FsWorkload *workload)
++        : PCEvent(q, "schedule ljmp", pc), workload(workload)
++    {}
++
++    void process(ThreadContext *tc) override;
++
++  private:
++    FsWorkload *workload;
++};
++
++class I386ScheduleRet : public PCEvent
++{
++  public:
++    I386ScheduleRet(PCEventScope *q, Addr pc, FsWorkload *workload)
++        : PCEvent(q, "schedule ret", pc), workload(workload)
++    {}
++
++    void process(ThreadContext *tc) override;
++
++  private:
++    FsWorkload *workload;
++};
++
++class I386CopyPageEntry : public PCEvent
++{
++  public:
++    I386CopyPageEntry(PCEventScope *q, Addr pc, FsWorkload *workload)
++        : PCEvent(q, "copy_page entered", pc), workload(workload)
++    {}
++
++    void process(ThreadContext *tc) override;
++
++  private:
++    FsWorkload *workload;
++};
++
++std::string
++FsWorkload::linux011Count() const
++{
++    const std::string key = "gem5_count=";
++    auto pos = commandLine.find(key);
++    if (pos == std::string::npos)
++        return "timer";
++    std::string count = commandLine.substr(pos + key.size());
++    auto end = count.find(' ');
++    if (end != std::string::npos)
++        count.resize(end);
++    return count;
++}
++
++Addr
++FsWorkload::findKernelBytes(Addr start, Addr len,
++        const uint8_t *pat, size_t n) const
++{
++    std::vector<uint8_t> buf(len);
++    system->physProxy.readBlob(start, buf.data(), buf.size());
++    for (size_t i = 0; i + n <= buf.size(); ++i) {
++        if (std::memcmp(buf.data() + i, pat, n) == 0)
++            return start + i;
++    }
++    return 0;
++}
++
++void
++FsWorkload::armCountedExit(ThreadContext *tc, Addr pc, const char *cause)
++{
++    if (countedExitPcEvent != nullptr)
++        return;
++    countedExitPcEvent = new I386CountedExit(tc, pc, cause);
++}
++
++void
++I386ScheduleEntry::process(ThreadContext *tc)
++{
++    workload->onScheduleEntry(tc);
++}
++
++void
++I386ScheduleLjmp::process(ThreadContext *tc)
++{
++    workload->onScheduleLjmp(tc);
++}
++
++void
++I386ScheduleRet::process(ThreadContext *tc)
++{
++    workload->onScheduleRet(tc);
++}
++
++void
++I386CopyPageEntry::process(ThreadContext *tc)
++{
++    workload->onCopyPageEntry(tc);
++}
++
++void
++FsWorkload::onScheduleEntry(ThreadContext *tc)
++{
++    if (linux011CountArmed)
++        return;
++    linux011CountArmed = true;
++    statistics::reset();
++    inform("schedule entered, counters restarted.\n");
++}
++
++void
++FsWorkload::onScheduleLjmp(ThreadContext *tc)
++{
++    if (!linux011CountArmed || countedExitPcEvent != nullptr)
++        return;
++
++    // switch_to stores the TSS selector at 4(%esp), then ljmp *(%esp).
++    // This event runs before that ljmp. The destination TSS still holds
++    // the new task's EIP.
++    const Addr esp = tc->getReg(int_reg::Rsp);
++    uint16_t sel = 0;
++    TranslatingPortProxy proxy(tc);
++    proxy.readBlob(esp + 4, &sel, sizeof(sel));
++    sel = letoh(sel);
++    fatal_if(sel & 4, "schedule ljmp through an LDT selector %#x.", sel);
++
++    const Addr gdt = tc->readMiscRegNoEffect(misc_reg::TsgBase);
++    uint8_t desc[8];
++    proxy.readBlob(gdt + (sel & ~7), desc, sizeof(desc));
++    auto descBase = [](const uint8_t *d) -> uint32_t {
++        return d[2] | (d[3] << 8) | (d[4] << 16) | (d[7] << 24);
++    };
++    const uint32_t tssBase = descBase(desc);
++    uint32_t eip = 0;
++    proxy.readBlob(tssBase + 32, &eip, sizeof(eip));
++    eip = letoh(eip);
++    fatal_if(eip == 0, "schedule TSS %#x has a zero EIP.", sel);
++
++    // PC events see the linear address. A user CS has a non-zero base.
++    uint16_t cs = 0;
++    proxy.readBlob(tssBase + 76, &cs, sizeof(cs));
++    cs = letoh(cs);
++    uint32_t segBase = 0;
++    if ((cs & ~3) != 0) {
++        Addr table = gdt;
++        if (cs & 4) {
++            uint16_t ldtSel = 0;
++            proxy.readBlob(tssBase + 96, &ldtSel, sizeof(ldtSel));
++            ldtSel = letoh(ldtSel);
++            uint8_t ldtDesc[8];
++            proxy.readBlob(gdt + (ldtSel & ~7), ldtDesc, sizeof(ldtDesc));
++            table = descBase(ldtDesc);
++        }
++        uint8_t segDesc[8];
++        proxy.readBlob(table + (cs & ~7), segDesc, sizeof(segDesc));
++        segBase = descBase(segDesc);
++    }
++    const Addr exitPc = static_cast<Addr>(eip) + segBase;
++
++    armCountedExit(tc, exitPc, "schedule switched");
++    inform("schedule ljmp selector=%#x CS=%#x linear EIP=%#x.\n",
++           sel, cs, exitPc);
++}
++
++void
++FsWorkload::onScheduleRet(ThreadContext *tc)
++{
++    if (!linux011CountArmed || countedExitPcEvent != nullptr)
++        return;
++
++    // No task switch. The event is the ret itself, before it runs.
++    // Plant the exit on the return address so the ret is included.
++    const Addr esp = tc->getReg(int_reg::Rsp);
++    uint32_t ret_eip = 0;
++    TranslatingPortProxy proxy(tc);
++    proxy.readBlob(esp, &ret_eip, sizeof(ret_eip));
++    ret_eip = letoh(ret_eip);
++    armCountedExit(tc, ret_eip, "schedule returned");
++    inform("schedule returns without a task switch, return EIP=%#x.\n",
++           ret_eip);
++}
++
++void
++FsWorkload::onCopyPageEntry(ThreadContext *tc)
++{
++    if (linux011CountArmed)
++        return;
++    linux011CountArmed = true;
++    statistics::reset();
++    // f3 a5 is the rep movsl. The next instruction is two bytes later.
++    // The exit fires when that instruction is about to run, so the
++    // window is the copy.
++    armCountedExit(tc, copyPagePc + 2, "copy_page returned");
++    inform("copy_page rep movsl at %#x, counters restarted.\n", copyPagePc);
++}
++
++void
++FsWorkload::initI386Protected(ThreadContext *tc)
++{
++    // Linux 0.11 head.s. Flat kernel GDT: null, code 0x08, data 0x10,
++    // 32-bit, base 0, 4KiB granularity, limit 0xfff (16MiB-1).
++    // Paging is off. setup_paging itself turns PG on, then ret.
++    // The real caller is after_page_tables, whose pushed return address
++    // is _main. This lab plants a different return address so the run
++    // stops at the end of setup_paging.
++    auto paging = kernelSymtab.find("setup_paging");
++    auto gdt = kernelSymtab.find("_gdt");
++    fatal_if(paging == kernelSymtab.end(),
++             "32-bit kernel has no setup_paging symbol.");
++    fatal_if(gdt == kernelSymtab.end(),
++             "32-bit kernel has no _gdt symbol.");
++
++    const Addr start = paging->address();
++    const Addr gdtBase = gdt->address();
++    // Above the loaded kernel (Linux 0.11 ends near 0x1c000) and outside
++    // the five pages setup_paging clears at physical 0.
++    const Addr haltAddr = 0x80000;
++    const Addr stackAddr = 0x7F000;
++
++    SegDescriptor desc = 0;
++    desc.dpl = 0;
++    desc.p = 1;
++    desc.l = 0;
++    desc.d = 1;
++    desc.s = 1;
++    desc.base = 0;
++    // Byte limit 16MiB-1. The setter turns on the granularity bit.
++    desc.limit = 0x00FFFFFF;
++
++    SegDescriptor csDesc = desc;
++    csDesc.type.codeOrData = 1;
++    csDesc.type.r = 1;
++
++    SegDescriptor dsDesc = desc;
++    dsDesc.type.codeOrData = 0;
++    dsDesc.type.w = 1;
++
++    SegSelector cs = 0;
++    cs.si = 1;
++    SegSelector ds = 0;
++    ds.si = 2;
++
++    tc->setMiscReg(misc_reg::Cs, (RegVal)cs);
++    tc->setMiscReg(misc_reg::Ds, (RegVal)ds);
++    tc->setMiscReg(misc_reg::Es, (RegVal)ds);
++    tc->setMiscReg(misc_reg::Fs, (RegVal)ds);
++    tc->setMiscReg(misc_reg::Gs, (RegVal)ds);
++    tc->setMiscReg(misc_reg::Ss, (RegVal)ds);
++
++    installSegDesc(tc, segment_idx::Cs, csDesc, false);
++    installSegDesc(tc, segment_idx::Ds, dsDesc, false);
++    installSegDesc(tc, segment_idx::Es, dsDesc, false);
++    installSegDesc(tc, segment_idx::Fs, dsDesc, false);
++    installSegDesc(tc, segment_idx::Gs, dsDesc, false);
++    installSegDesc(tc, segment_idx::Ss, dsDesc, false);
++
++    tc->setMiscReg(misc_reg::Tsl, 0);
++    SegAttr ldtAttr = 0;
++    ldtAttr.unusable = 1;
++    tc->setMiscReg(misc_reg::TslAttr, ldtAttr);
++    // The ELF already contains the kernel GDT at _gdt. Limit matches
++    // gdt_descr in head.s: 256 descriptors.
++    tc->setMiscReg(misc_reg::TsgBase, gdtBase);
++    tc->setMiscReg(misc_reg::TsgLimit, 256 * 8 - 1);
++
++    CR0 cr0 = tc->readMiscRegNoEffect(misc_reg::Cr0);
++    cr0.pg = 0;
++    tc->setMiscReg(misc_reg::Cr0, cr0);
++    cr0.pe = 1;
++    tc->setMiscReg(misc_reg::Cr0, cr0);
++
++    CR4 cr4 = tc->readMiscRegNoEffect(misc_reg::Cr4);
++    cr4.pae = 0;
++    cr4.pse = 0;
++    tc->setMiscReg(misc_reg::Cr4, cr4);
++
++    Efer efer = tc->readMiscRegNoEffect(misc_reg::Efer);
++    efer.lme = 0;
++    tc->setMiscReg(misc_reg::Efer, efer);
++
++    RegVal rflags = tc->readMiscRegNoEffect(misc_reg::Rflags);
++    rflags &= ~(1ULL << 9);
++    rflags |= 2;
++    tc->setMiscReg(misc_reg::Rflags, rflags);
++
++    if (commandLine.find("gem5_boot=startup_32") != std::string::npos) {
++        initLinux011ToTimer(tc);
++        return;
++    }
++
++    auto phys_proxy = system->physProxy;
++    uint32_t ret = htole<uint32_t>(static_cast<uint32_t>(haltAddr));
++    phys_proxy.writeBlob(stackAddr, &ret, sizeof(ret));
++    uint8_t hlt = 0xF4;
++    phys_proxy.writeBlob(haltAddr, &hlt, 1);
++    tc->setReg(int_reg::Rsp, stackAddr);
++
++    tc->pcState(start);
++
++    if (i386HaltPcEvent == nullptr)
++        i386HaltPcEvent = new I386HaltExit(tc, haltAddr);
++
++    inform("32-bit protected mode, paging off, PC=%#x (_gdt at %#x). "
++           "setup_paging returns to hlt at %#x.\n",
++           start, gdtBase, haltAddr);
++}
++
++void
++FsWorkload::initLinux011ToTimer(ThreadContext *tc)
++{
++    // Head.s startup, after setup.s. The kernel loads its own GDT and
++    // IDT, builds the page tables, and reaches sti() in main. The 8259
++    // is already programmed the way setup.s left it. IRQ0 is the PIT,
++    // wired to the CPU's legacy interrupt pin.
++    auto entry = kernelSymtab.find("startup_32");
++    auto timer = kernelSymtab.find("_timer_interrupt");
++    auto stack = kernelSymtab.find("_stack_start");
++    fatal_if(entry == kernelSymtab.end(), "no startup_32 symbol.");
++    fatal_if(timer == kernelSymtab.end(), "no _timer_interrupt symbol.");
++    fatal_if(stack == kernelSymtab.end(), "no _stack_start symbol.");
++
++    auto *pic1 = dynamic_cast<I8259 *>(
++            SimObject::find("system.pc.south_bridge.pic1"));
++    auto *pic2 = dynamic_cast<I8259 *>(
++            SimObject::find("system.pc.south_bridge.pic2"));
++    fatal_if(pic1 == nullptr || pic2 == nullptr,
++             "8259 controllers are not in this system.");
++    pic1->setLegacyVectors(0x20, 0xFF, 0x04);
++    pic2->setLegacyVectors(0x28, 0xFF, 0x02);
++
++    auto *lapic = dynamic_cast<Interrupts *>(
++            tc->getCpuPtr()->getInterruptController(0));
++    fatal_if(lapic == nullptr, "local APIC is missing.");
++    // ExtInt delivery, unmasked. Bits 10:8 are the delivery mode.
++    // This is the 386 INTR pin, which Linux 0.11 expects from the 8259.
++    lapic->setReg(APIC_LVT_LINT0, delivery_mode::ExtInt << 8);
++
++    // Boot parameters setup.s stores at 0x90000. 16MiB machine:
++    // extended memory above 1MiB is 15*1024 KiB. Color 80x25, EGA/VGA.
++    auto phys_proxy = system->physProxy;
++    uint8_t boot[16] = {};
++    boot[0] = 0;             // cursor x
++    boot[1] = 0;             // cursor y
++    boot[2] = 0x00;          // EXT_MEM_K low, 15360
++    boot[3] = 0x3C;
++    // 0x90004 video page stays 0
++    boot[6] = 0x03;          // mode 3
++    boot[7] = 80;            // columns
++    phys_proxy.writeBlob(0x90000, boot, sizeof(boot));
++    uint16_t root_dev = htole<uint16_t>(0x0301);
++    phys_proxy.writeBlob(0x901FC, &root_dev, sizeof(root_dev));
++
++    uint32_t esp = 0;
++    phys_proxy.readBlob(stack->address(), &esp, sizeof(esp));
++    tc->setReg(int_reg::Rsp, letoh(esp));
++    tc->pcState(entry->address());
++
++    const std::string count = linux011Count();
++    if (count == "schedule") {
++        auto schedule = kernelSymtab.find("_schedule");
++        fatal_if(schedule == kernelSymtab.end(), "no _schedule symbol.");
++        const Addr schedulePc = schedule->address();
++        const uint8_t ljmpPat[] = {0xff, 0x2c, 0x24};
++        const Addr ljmpPc = findKernelBytes(schedulePc, 0x100, ljmpPat, 3);
++        fatal_if(ljmpPc == 0, "no ljmp *(%esp) in _schedule.");
++        const uint8_t retPat[] = {0xc3};
++        const Addr retPc = findKernelBytes(ljmpPc, 0x20, retPat, 1);
++        fatal_if(retPc == 0, "no ret after the ljmp in _schedule.");
++        scheduleEntryPcEvent = new I386ScheduleEntry(tc, schedulePc, this);
++        scheduleLjmpPcEvent = new I386ScheduleLjmp(tc, ljmpPc, this);
++        scheduleRetPcEvent = new I386ScheduleRet(tc, retPc, this);
++        inform("32-bit protected mode at startup_32=%#x. "
++               "Counting _schedule at %#x (ljmp %#x, ret %#x).\n",
++               entry->address(), schedulePc, ljmpPc, retPc);
++        return;
++    }
++    if (count == "copy_page") {
++        auto unWp = kernelSymtab.find("_un_wp_page");
++        fatal_if(unWp == kernelSymtab.end(), "no _un_wp_page symbol.");
++        const uint8_t movsPat[] = {0xf3, 0xa5};
++        copyPagePc = findKernelBytes(unWp->address(), 0x120, movsPat, 2);
++        fatal_if(copyPagePc == 0, "no rep movsl in _un_wp_page.");
++        copyPageEntryPcEvent = new I386CopyPageEntry(tc, copyPagePc, this);
++        inform("32-bit protected mode at startup_32=%#x. "
++               "Counting copy_page rep movsl at %#x.\n",
++               entry->address(), copyPagePc);
++        return;
++    }
++    fatal_if(count != "timer", "unknown gem5_count=%s.", count.c_str());
++
++    if (timerEntryPcEvent == nullptr) {
++        timerEntryPcEvent = new I386TimerEntry(
++                tc, timer->address(), this);
++    }
++
++    inform("32-bit protected mode at startup_32=%#x. "
++           "Counting _timer_interrupt at %#x.\n",
++           entry->address(), timer->address());
++}
++
+ void
+ FsWorkload::initState()
+ {
+@@ -174,8 +688,10 @@ FsWorkload::initState()
+ 
+     fatal_if(!kernelObj, "No kernel to load.");
+ 
+-    fatal_if(kernelObj->getArch() == loader::I386,
+-             "Loading a 32 bit x86 kernel is not supported.");
++    if (kernelObj->getArch() == loader::I386) {
++        initI386Protected(system->threads[0]);
++        return;
++    }
+ 
+     ThreadContext *tc = system->threads[0];
+     auto phys_proxy = system->physProxy;
+diff --git a/src/arch/x86/fs_workload.hh b/src/arch/x86/fs_workload.hh
+index f341fae..f4212b9 100644
+--- a/src/arch/x86/fs_workload.hh
++++ b/src/arch/x86/fs_workload.hh
+@@ -73,6 +73,12 @@ class ConfigTable;
+ void installSegDesc(ThreadContext *tc, int seg, SegDescriptor desc,
+         bool longmode);
+ 
++class I386TimerEntry;
++class I386ScheduleEntry;
++class I386ScheduleLjmp;
++class I386ScheduleRet;
++class I386CopyPageEntry;
++
+ class FsWorkload : public KernelWorkload
+ {
+   public:
+@@ -86,6 +92,30 @@ class FsWorkload : public KernelWorkload
+         if (kernelOopsPcEvent != nullptr) {
+             delete kernelOopsPcEvent;
+         }
++        if (i386HaltPcEvent != nullptr) {
++            delete i386HaltPcEvent;
++        }
++        if (timerEntryPcEvent != nullptr) {
++            delete timerEntryPcEvent;
++        }
++        if (timerExitPcEvent != nullptr) {
++            delete timerExitPcEvent;
++        }
++        if (scheduleEntryPcEvent != nullptr) {
++            delete scheduleEntryPcEvent;
++        }
++        if (scheduleLjmpPcEvent != nullptr) {
++            delete scheduleLjmpPcEvent;
++        }
++        if (scheduleRetPcEvent != nullptr) {
++            delete scheduleRetPcEvent;
++        }
++        if (copyPageEntryPcEvent != nullptr) {
++            delete copyPageEntryPcEvent;
++        }
++        if (countedExitPcEvent != nullptr) {
++            delete countedExitPcEvent;
++        }
+     }
+   public:
+     void initState() override;
+@@ -120,8 +150,38 @@ class FsWorkload : public KernelWorkload
+ 
+     PCEvent *kernelPanicPcEvent = nullptr;
+     PCEvent *kernelOopsPcEvent = nullptr;
++    PCEvent *i386HaltPcEvent = nullptr;
++    PCEvent *timerEntryPcEvent = nullptr;
++    PCEvent *timerExitPcEvent = nullptr;
++    PCEvent *scheduleEntryPcEvent = nullptr;
++    PCEvent *scheduleLjmpPcEvent = nullptr;
++    PCEvent *scheduleRetPcEvent = nullptr;
++    PCEvent *copyPageEntryPcEvent = nullptr;
++    PCEvent *countedExitPcEvent = nullptr;
++    bool linux011CountArmed = false;
++    Addr copyPagePc = 0;
++    friend class I386TimerEntry;
++    friend class I386ScheduleEntry;
++    friend class I386ScheduleLjmp;
++    friend class I386ScheduleRet;
++    friend class I386CopyPageEntry;
+     void addExitOnKernelPanicEvent();
+     void addExitOnKernelOopsEvent();
++    // 32-bit protected mode, paging off, for an ELF32 kernel such as
++    // Linux 0.11. The stock path below this only builds long mode.
++    void initI386Protected(ThreadContext *tc);
++    // startup_32, with the 8259 left as setup.s left it. Which path is
++    // counted comes from gem5_count= on the command line.
++    void initLinux011ToTimer(ThreadContext *tc);
++    void onTimerInterruptEntry(ThreadContext *tc);
++    void onScheduleEntry(ThreadContext *tc);
++    void onScheduleLjmp(ThreadContext *tc);
++    void onScheduleRet(ThreadContext *tc);
++    void onCopyPageEntry(ThreadContext *tc);
++    void armCountedExit(ThreadContext *tc, Addr pc, const char *cause);
++    std::string linux011Count() const;
++    Addr findKernelBytes(Addr start, Addr len,
++            const uint8_t *pat, size_t n) const;
+ };
+ 
+ } // namespace X86ISA
+diff --git a/src/arch/x86/isa/decoder/one_byte_opcodes.isa b/src/arch/x86/isa/decoder/one_byte_opcodes.isa
+index 13b05e6..c9c9312 100644
+--- a/src/arch/x86/isa/decoder/one_byte_opcodes.isa
++++ b/src/arch/x86/isa/decoder/one_byte_opcodes.isa
+@@ -48,7 +48,7 @@
+             0x7: decode MODE_SUBMODE {
+                 0x0: UD2();
+                 0x3, 0x4: POP_REAL(sEv);
+-                default: WarnUnimpl::pop_ES();
++                default: POP_PROT(sEv);
+             }
+             default: MultiInst::ADD(OPCODE_OP_BOTTOM3,
+                                     [Eb,Gb], [Ev,Gv],
+@@ -76,7 +76,7 @@
+             0x7: decode MODE_SUBMODE {
+                 0x0: UD2();
+                 0x3, 0x4: POP_REAL(sSv);
+-                default: WarnUnimpl::pop_SS();
++                default: POP_PROT(sSv);
+             }
+             default: MultiInst::ADC(OPCODE_OP_BOTTOM3,
+                                     [Eb,Gb], [Ev,Gv],
+@@ -91,7 +91,7 @@
+             0x7: decode MODE_SUBMODE {
+                 0x0: UD2();
+                 0x3, 0x4: POP_REAL(sDv);
+-                default: WarnUnimpl::pop_DS();
++                default: POP_PROT(sDv);
+             }
+             default: MultiInst::SBB(OPCODE_OP_BOTTOM3,
+                                     [Eb,Gb], [Ev,Gv],
+diff --git a/src/arch/x86/isa/decoder/two_byte_opcodes.isa b/src/arch/x86/isa/decoder/two_byte_opcodes.isa
+index a32d41a..f973df6 100644
+--- a/src/arch/x86/isa/decoder/two_byte_opcodes.isa
++++ b/src/arch/x86/isa/decoder/two_byte_opcodes.isa
+@@ -689,7 +689,7 @@
+             0x0: Inst::PUSH(sFv);
+             0x1: decode MODE_SUBMODE {
+                 0x3, 0x4: Inst::POP_REAL(sFv);
+-                default: pop_fs();
++                default: Inst::POP_PROT(sFv);
+             }
+             0x2: CPUIDInst::CPUID({{
+                 CpuidResult result;
+@@ -720,7 +720,7 @@
+             0x0: Inst::PUSH(sGv);
+             0x1: decode MODE_SUBMODE {
+                 0x3, 0x4: Inst::POP_REAL(sGv);
+-                default: pop_gs();
++                default: Inst::POP_PROT(sGv);
+             }
+             0x2: rsm_smm();
+             0x3: Inst::BTS(Ev,Gv);
+diff --git a/src/arch/x86/isa/decoder/x87.isa b/src/arch/x86/isa/decoder/x87.isa
+index dc5840f..d2faf8a 100644
+--- a/src/arch/x86/isa/decoder/x87.isa
++++ b/src/arch/x86/isa/decoder/x87.isa
+@@ -167,6 +167,9 @@ format WarnUnimpl {
+                 0x3: decode MODRM_RM {
+                     0x2: fnclex();
+                     0x3: fninit();
++                    // 287 fsetpm. A 387 ignores it. Linux 0.11 check_x87
++                    // executes these bytes on the coprocessor-present path.
++                    0x4: fsetpm();
+                 }
+             }
+             0x5: decode MODRM_MOD {
+diff --git a/src/arch/x86/isa/insts/general_purpose/control_transfer/jump.py b/src/arch/x86/isa/insts/general_purpose/control_transfer/jump.py
+index 30c1997..1077116 100644
+--- a/src/arch/x86/isa/insts/general_purpose/control_transfer/jump.py
++++ b/src/arch/x86/isa/insts/general_purpose/control_transfer/jump.py
+@@ -142,7 +142,170 @@ farJmpProcessDescriptor:
+     eret
+ 
+ farJmpSystemDescriptor:
+-    panic "Far jumps to system descriptors aren't implemented"
++    # 32-bit hardware task switch through a TSS. Linux 0.11 schedule()
++    # reaches the next task this way. t4 is the TSS descriptor, t2 the
++    # selector. The offset in t1 is ignored.
++    limm t0, 0, dataSize=8
++    rdip t7, dataSize=4
++    rflags t6, dataSize=8
++    st t7, tr, [1, t0, t0], 32, dataSize=4, addressSize=4
++    st t6, tr, [1, t0, t0], 36, dataSize=4, addressSize=4
++    st rax, tr, [1, t0, t0], 40, dataSize=4, addressSize=4
++    st rcx, tr, [1, t0, t0], 44, dataSize=4, addressSize=4
++    st rdx, tr, [1, t0, t0], 48, dataSize=4, addressSize=4
++    st rbx, tr, [1, t0, t0], 52, dataSize=4, addressSize=4
++    st rsp, tr, [1, t0, t0], 56, dataSize=4, addressSize=4
++    st rbp, tr, [1, t0, t0], 60, dataSize=4, addressSize=4
++    st rsi, tr, [1, t0, t0], 64, dataSize=4, addressSize=4
++    st rdi, tr, [1, t0, t0], 68, dataSize=4, addressSize=4
++    rdsel t3, es, dataSize=2
++    st t3, tr, [1, t0, t0], 72, dataSize=4, addressSize=4
++    rdsel t3, cs, dataSize=2
++    st t3, tr, [1, t0, t0], 76, dataSize=4, addressSize=4
++    rdsel t3, ss, dataSize=2
++    st t3, tr, [1, t0, t0], 80, dataSize=4, addressSize=4
++    rdsel t3, ds, dataSize=2
++    st t3, tr, [1, t0, t0], 84, dataSize=4, addressSize=4
++    rdsel t3, fs, dataSize=2
++    st t3, tr, [1, t0, t0], 88, dataSize=4, addressSize=4
++    rdsel t3, gs, dataSize=2
++    st t3, tr, [1, t0, t0], 92, dataSize=4, addressSize=4
++
++    wrdl tr, t4, t2, dataSize=8
++    wrsel tr, t2, dataSize=2
++
++    ld t3, tr, [1, t0, t0], 28, dataSize=4, addressSize=4
++    wrcr cr3, t3, dataSize=8
++    ld t3, tr, [1, t0, t0], 40, dataSize=4, addressSize=4
++    mov rax, rax, t3, dataSize=4
++    ld t3, tr, [1, t0, t0], 44, dataSize=4, addressSize=4
++    mov rcx, rcx, t3, dataSize=4
++    ld t3, tr, [1, t0, t0], 48, dataSize=4, addressSize=4
++    mov rdx, rdx, t3, dataSize=4
++    ld t3, tr, [1, t0, t0], 52, dataSize=4, addressSize=4
++    mov rbx, rbx, t3, dataSize=4
++    ld t3, tr, [1, t0, t0], 56, dataSize=4, addressSize=4
++    mov rsp, rsp, t3, dataSize=4
++    ld t3, tr, [1, t0, t0], 60, dataSize=4, addressSize=4
++    mov rbp, rbp, t3, dataSize=4
++    ld t3, tr, [1, t0, t0], 64, dataSize=4, addressSize=4
++    mov rsi, rsi, t3, dataSize=4
++    ld t3, tr, [1, t0, t0], 68, dataSize=4, addressSize=4
++    mov rdi, rdi, t3, dataSize=4
++    ld t6, tr, [1, t0, t0], 36, dataSize=4, addressSize=4
++    limm t0, 0, dataSize=8
++    wrflags t0, t6, dataSize=8
++
++    ld t5, tr, [1, t0, t0], 96, dataSize=4, addressSize=4
++    andi t1, t5, 0xFC, flags=(EZF,), dataSize=2
++    br rom_local_label("taskSwitchLdtDone"), flags=(CEZF,)
++    andi t3, t5, 0xF8, dataSize=8
++    limm t0, 0, dataSize=8
++    ld t1, tsg, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++    wrdl tsl, t1, t5, dataSize=8
++taskSwitchLdtDone:
++    limm t0, 0, dataSize=8
++    ld t1, tr, [1, t0, t0], 72, dataSize=4, addressSize=4
++    andi t0, t1, 0xFC, flags=(EZF,), dataSize=2
++    br rom_local_label("taskEsDone"), flags=(CEZF,)
++    andi t3, t1, 0xF8, dataSize=8
++    andi t0, t1, 0x4, flags=(EZF,), dataSize=2
++    br rom_local_label("taskEsGdt"), flags=(CEZF,)
++    limm t0, 0, dataSize=8
++    ld t3, tsl, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++    br rom_local_label("taskEsWrdl")
++taskEsGdt:
++    limm t0, 0, dataSize=8
++    ld t3, tsg, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++taskEsWrdl:
++    wrdl es, t3, t1, dataSize=8
++    wrsel es, t1, dataSize=2
++taskEsDone:
++    limm t0, 0, dataSize=8
++    ld t1, tr, [1, t0, t0], 80, dataSize=4, addressSize=4
++    andi t0, t1, 0xFC, flags=(EZF,), dataSize=2
++    br rom_local_label("taskSsDone"), flags=(CEZF,)
++    andi t3, t1, 0xF8, dataSize=8
++    andi t0, t1, 0x4, flags=(EZF,), dataSize=2
++    br rom_local_label("taskSsGdt"), flags=(CEZF,)
++    limm t0, 0, dataSize=8
++    ld t3, tsl, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++    br rom_local_label("taskSsWrdl")
++taskSsGdt:
++    limm t0, 0, dataSize=8
++    ld t3, tsg, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++taskSsWrdl:
++    wrdl ss, t3, t1, dataSize=8
++    wrsel ss, t1, dataSize=2
++taskSsDone:
++    limm t0, 0, dataSize=8
++    ld t1, tr, [1, t0, t0], 84, dataSize=4, addressSize=4
++    andi t0, t1, 0xFC, flags=(EZF,), dataSize=2
++    br rom_local_label("taskDsDone"), flags=(CEZF,)
++    andi t3, t1, 0xF8, dataSize=8
++    andi t0, t1, 0x4, flags=(EZF,), dataSize=2
++    br rom_local_label("taskDsGdt"), flags=(CEZF,)
++    limm t0, 0, dataSize=8
++    ld t3, tsl, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++    br rom_local_label("taskDsWrdl")
++taskDsGdt:
++    limm t0, 0, dataSize=8
++    ld t3, tsg, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++taskDsWrdl:
++    wrdl ds, t3, t1, dataSize=8
++    wrsel ds, t1, dataSize=2
++taskDsDone:
++    limm t0, 0, dataSize=8
++    ld t1, tr, [1, t0, t0], 76, dataSize=4, addressSize=4
++    andi t3, t1, 0xF8, dataSize=8
++    andi t0, t1, 0x4, flags=(EZF,), dataSize=2
++    br rom_local_label("taskCsGdt"), flags=(CEZF,)
++    limm t0, 0, dataSize=8
++    ld t3, tsl, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++    br rom_local_label("taskCsWrdl")
++taskCsGdt:
++    limm t0, 0, dataSize=8
++    ld t3, tsg, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++taskCsWrdl:
++    wrdl cs, t3, t1, dataSize=8
++    wrsel cs, t1, dataSize=2
++    limm t0, 0, dataSize=8
++    ld t1, tr, [1, t0, t0], 88, dataSize=4, addressSize=4
++    andi t0, t1, 0xFC, flags=(EZF,), dataSize=2
++    br rom_local_label("taskFsDone"), flags=(CEZF,)
++    andi t3, t1, 0xF8, dataSize=8
++    andi t0, t1, 0x4, flags=(EZF,), dataSize=2
++    br rom_local_label("taskFsGdt"), flags=(CEZF,)
++    limm t0, 0, dataSize=8
++    ld t3, tsl, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++    br rom_local_label("taskFsWrdl")
++taskFsGdt:
++    limm t0, 0, dataSize=8
++    ld t3, tsg, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++taskFsWrdl:
++    wrdl fs, t3, t1, dataSize=8
++    wrsel fs, t1, dataSize=2
++taskFsDone:
++    limm t0, 0, dataSize=8
++    ld t1, tr, [1, t0, t0], 92, dataSize=4, addressSize=4
++    andi t0, t1, 0xFC, flags=(EZF,), dataSize=2
++    br rom_local_label("taskGsDone"), flags=(CEZF,)
++    andi t3, t1, 0xF8, dataSize=8
++    andi t0, t1, 0x4, flags=(EZF,), dataSize=2
++    br rom_local_label("taskGsGdt"), flags=(CEZF,)
++    limm t0, 0, dataSize=8
++    ld t3, tsl, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++    br rom_local_label("taskGsWrdl")
++taskGsGdt:
++    limm t0, 0, dataSize=8
++    ld t3, tsg, [1, t0, t3], dataSize=8, addressSize=8, atCPL0=True
++taskGsWrdl:
++    wrdl gs, t3, t1, dataSize=8
++    wrsel gs, t1, dataSize=2
++taskGsDone:
++    limm t0, 0, dataSize=8
++    ld t7, tr, [1, t0, t0], 32, dataSize=4, addressSize=4
++    wrip t0, t7, dataSize=8
+     eret
+ };
+ 
+diff --git a/src/arch/x86/isa/insts/general_purpose/data_transfer/stack_operations.py b/src/arch/x86/isa/insts/general_purpose/data_transfer/stack_operations.py
+index 72270fe..a4b2b67 100644
+--- a/src/arch/x86/isa/insts/general_purpose/data_transfer/stack_operations.py
++++ b/src/arch/x86/isa/insts/general_purpose/data_transfer/stack_operations.py
+@@ -73,6 +73,28 @@ def macroop POP_REAL_S {
+     wrbase sr, t1, dataSize=8
+ };
+ 
++def macroop POP_PROT_S {
++    # 32-bit pop of a segment selector, then the same descriptor load
++    # mov to a segment register performs.
++    .adjust_env oszIn64Override
++
++    ld t1, ss, [1, t0, rsp], addressSize=ssz
++    addi rsp, rsp, dsz, dataSize=ssz
++    andi t0, t1, 0xFC, flags=(EZF,), dataSize=2
++    br label("processDescriptor"), flags=(CEZF,)
++    andi t2, t1, 0xF8, dataSize=8
++    andi t0, t1, 0x4, flags=(EZF,), dataSize=2
++    br label("globalDescriptor"), flags=(CEZF,)
++    ld t3, tsl, [1, t0, t2], dataSize=8, addressSize=8
++    br label("processDescriptor")
++globalDescriptor:
++    ld t3, tsg, [1, t0, t2], dataSize=8, addressSize=8
++processDescriptor:
++    chks t1, t3, dataSize=8
++    wrdl sr, t3, t1
++    wrsel sr, t1
++};
++
+ def macroop PUSH_R {
+     # Make the default data size of pops 64 bits in 64 bit mode
+     .adjust_env oszIn64Override
+diff --git a/src/arch/x86/isa/insts/romutil.py b/src/arch/x86/isa/insts/romutil.py
+index 7082b4d..c48a94f 100644
+--- a/src/arch/x86/isa/insts/romutil.py
++++ b/src/arch/x86/isa/insts/romutil.py
+@@ -203,9 +203,121 @@ microcode = (
+     + """
+ def rom
+ {
+-    # This vectors the CPU into an interrupt handler in legacy mode.
++    # 32-bit protected mode. t1 is the vector, t7 is the return EIP.
++    # The gate is 8 bytes. IRET_PROT pops EIP, CS, EFLAGS, and ESP, SS
++    # when CPL changes. andi immediates are 8 bits, so 16-bit fields
++    # are isolated with shifts.
++    # t13 is 0, or 4 when the fault pushed an error code (t15).
+     extern legacyModeInterrupt:
+-    panic "Legacy mode interrupts not implemented (in microcode)"
++    limm t13, 0, dataSize=8
++    br rom_local_label("legacyModeInterrupt_body")
++    extern legacyModeInterruptWithError:
++    limm t13, 4, dataSize=8
++legacyModeInterrupt_body:
++    slli t4, t1, 3, dataSize=8
++    ld t4, idtr, [1, t0, t4], dataSize=8, addressSize=8, atCPL0=True
++    chks t1, t4, IntGateCheck
++
++    srli t5, t4, 16, dataSize=8
++    slli t5, t5, 48, dataSize=8
++    srli t5, t5, 48, dataSize=8
++    andi t10, t5, 0xF8, dataSize=8
++    andi t0, t5, 0x4, flags=(EZF,), dataSize=2
++    br rom_local_label("legacyModeInterrupt_global"), flags=(CEZF,)
++    panic "legacy interrupt through an LDT selector is not implemented"
++    eret
++legacyModeInterrupt_global:
++    ld t3, tsg, [1, t0, t10], dataSize=8, addressSize=8, atCPL0=True
++    chks t5, t3, IntCSCheck, dataSize=8
++
++    srli t9, t4, 48, dataSize=8
++    slli t9, t9, 16, dataSize=8
++    slli t2, t4, 48, dataSize=8
++    srli t2, t2, 48, dataSize=8
++    or t9, t9, t2, dataSize=8
++
++    srli t10, t3, 45, dataSize=8
++    andi t10, t10, 3, dataSize=8
++    rdattr t2, cs, dataSize=8
++    andi t2, t2, 3, dataSize=8
++    sub t0, t2, t10, flags=(EZF,), dataSize=8
++    br rom_local_label("legacyModeInterrupt_same"), flags=(CEZF,)
++
++    # CPL is changing. The compare above left t0 nonzero. 32-bit TSS:
++    # ESP0 at offset 4, SS0 at offset 8.
++    limm t0, 0, dataSize=8
++    limm t11, 4, dataSize=8
++    ld t6, tr, [1, t0, t11], dataSize=4, addressSize=4, atCPL0=True
++    limm t11, 8, dataSize=8
++    ld t11, tr, [1, t0, t11], dataSize=4, addressSize=4, atCPL0=True
++    rdsel t8, ss, dataSize=2
++    mov t12, t12, rsp, dataSize=4
++    rflags t2, dataSize=8
++    rdsel t10, cs, dataSize=2
++    # Install SS0 before the pushes. The new stack is a linear address
++    # in that segment. The outgoing user SS has a nonzero base.
++    andi t14, t11, 0xF8, dataSize=8
++    ld t1, tsg, [1, t0, t14], dataSize=8, addressSize=8, atCPL0=True
++    wrdl ss, t1, t11, dataSize=8
++    wrsel ss, t11, dataSize=2
++    andi t1, t13, 4, flags=(EZF,), dataSize=8
++    br rom_local_label("legacyModeInterrupt_privNoErr"), flags=(CEZF,)
++    subi t6, t6, 24, dataSize=4
++    st t15, ss, [1, t0, t6], 0, dataSize=4, addressSize=4, atCPL0=True
++    st t7, ss, [1, t0, t6], 4, dataSize=4, addressSize=4, atCPL0=True
++    st t10, ss, [1, t0, t6], 8, dataSize=4, addressSize=4, atCPL0=True
++    st t2, ss, [1, t0, t6], 12, dataSize=4, addressSize=4, atCPL0=True
++    st t12, ss, [1, t0, t6], 16, dataSize=4, addressSize=4, atCPL0=True
++    st t8, ss, [1, t0, t6], 20, dataSize=4, addressSize=4, atCPL0=True
++    br rom_local_label("legacyModeInterrupt_privRsp")
++legacyModeInterrupt_privNoErr:
++    subi t6, t6, 20, dataSize=4
++    st t7, ss, [1, t0, t6], 0, dataSize=4, addressSize=4, atCPL0=True
++    st t10, ss, [1, t0, t6], 4, dataSize=4, addressSize=4, atCPL0=True
++    st t2, ss, [1, t0, t6], 8, dataSize=4, addressSize=4, atCPL0=True
++    st t12, ss, [1, t0, t6], 12, dataSize=4, addressSize=4, atCPL0=True
++    st t8, ss, [1, t0, t6], 16, dataSize=4, addressSize=4, atCPL0=True
++legacyModeInterrupt_privRsp:
++    mov rsp, rsp, t6, dataSize=4
++    br rom_local_label("legacyModeInterrupt_enter")
++
++legacyModeInterrupt_same:
++    limm t0, 0, dataSize=8
++    rdsel t10, cs, dataSize=2
++    rflags t2, dataSize=8
++    mov t6, t6, rsp, dataSize=4
++    andi t1, t13, 4, flags=(EZF,), dataSize=8
++    br rom_local_label("legacyModeInterrupt_sameNoErr"), flags=(CEZF,)
++    subi t6, t6, 16, dataSize=4
++    st t15, ss, [1, t0, t6], 0, dataSize=4, addressSize=4
++    st t7, ss, [1, t0, t6], 4, dataSize=4, addressSize=4
++    st t10, ss, [1, t0, t6], 8, dataSize=4, addressSize=4
++    st t2, ss, [1, t0, t6], 12, dataSize=4, addressSize=4
++    br rom_local_label("legacyModeInterrupt_setRsp")
++legacyModeInterrupt_sameNoErr:
++    subi t6, t6, 12, dataSize=4
++    st t7, ss, [1, t0, t6], 0, dataSize=4, addressSize=4
++    st t10, ss, [1, t0, t6], 4, dataSize=4, addressSize=4
++    st t2, ss, [1, t0, t6], 8, dataSize=4, addressSize=4
++legacyModeInterrupt_setRsp:
++    mov rsp, rsp, t6, dataSize=4
++
++legacyModeInterrupt_enter:
++    wrdl cs, t3, t5, dataSize=8
++    wrsel cs, t5, dataSize=2
++    wrip t0, t9, dataSize=8
++
++    # Clear TF, NT, and RF. An interrupt gate (type bit 0 clear) also
++    # clears IF. A trap gate sets it.
++    limm t6, (1 << 8) | (1 << 14) | (1 << 16), dataSize=8
++    or t2, t2, t6, dataSize=8
++    srli t5, t4, 40, dataSize=8
++    srli t7, t2, 9, dataSize=8
++    xor t5, t7, t5, dataSize=8
++    andi t5, t5, 1, dataSize=8
++    slli t5, t5, 9, dataSize=8
++    or t6, t5, t6, dataSize=8
++    wrflags t6, t2
+     eret
+ };
+ 
+diff --git a/src/arch/x86/pagetable_walker.cc b/src/arch/x86/pagetable_walker.cc
+index bac174a..6ac8dd8 100644
+--- a/src/arch/x86/pagetable_walker.cc
++++ b/src/arch/x86/pagetable_walker.cc
+@@ -750,9 +750,12 @@ Walker::WalkerState::pageFault(bool present)
+ {
+     DPRINTF(PageTableWalker, "Raising page fault.\n");
+     HandyM5Reg m5reg = tc->readMiscRegNoEffect(misc_reg::M5Reg);
+-    if (mode == BaseMMU::Execute && !enableNX)
+-        mode = BaseMMU::Read;
+-    return std::make_shared<PageFault>(entry.vaddr, present, mode,
++    // Without NX, a fetch fault is reported as a read. Keep the walk's
++    // mode so the fetch translation still sees Execute.
++    BaseMMU::Mode faultMode = mode;
++    if (faultMode == BaseMMU::Execute && !enableNX)
++        faultMode = BaseMMU::Read;
++    return std::make_shared<PageFault>(entry.vaddr, present, faultMode,
+                                        m5reg.cpl == 3, false);
+ }
+ 
+diff --git a/src/dev/x86/i8259.cc b/src/dev/x86/i8259.cc
+index 9596eee..f79f945 100644
+--- a/src/dev/x86/i8259.cc
++++ b/src/dev/x86/i8259.cc
+@@ -278,6 +278,20 @@ X86ISA::I8259::requestInterrupt(int line)
+     }
+ }
+ 
++void
++X86ISA::I8259::setLegacyVectors(uint8_t vector_base, uint8_t imr,
++                                uint8_t cascade)
++{
++    vectorOffset = vector_base & ~mask(3);
++    IMR = imr;
++    cascadeMode = true;
++    cascadeBits = cascade;
++    edgeTriggered = true;
++    expectICW4 = false;
++    initControlWord = 0;
++    autoEOI = false;
++}
++
+ void
+ X86ISA::I8259::signalInterrupt(int line)
+ {
+diff --git a/src/dev/x86/i8259.hh b/src/dev/x86/i8259.hh
+index 7bb319d..ecf13ce 100644
+--- a/src/dev/x86/i8259.hh
++++ b/src/dev/x86/i8259.hh
+@@ -118,6 +118,10 @@ class I8259 : public BasicPioDevice
+         IMR = 0x00;
+     }
+ 
++    // State left by Linux 0.11 setup.s: edge-triggered cascade, ICWs done,
++    // every line masked. The kernel unmasks the lines it uses.
++    void setLegacyVectors(uint8_t vector_base, uint8_t imr, uint8_t cascade);
++
+     void signalInterrupt(int line);
+     void raiseInterruptPin(int number);
+     void lowerInterruptPin(int number);

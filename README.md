@@ -13,7 +13,7 @@ Before step 2, run `script/bootstrap.sh` once. [What it installs, and why](docs/
 1. **Start from the original.** `reference/linux-0.11/` keeps Linux 0.11 unmodified. Later changes stay comparable with this tree.
 2. **Build it on a contemporary computer and run it in QEMU.** [What this step changes, and why](docs/en/build-and-qemu.md). The source is adjusted so today's toolchain can compile it. Change a line, rebuild, and watch what the operating system does: whether it boots, whether a system call returns, and whether a process appears.
 3. **Watch the machine state in Bochs.** [What you look at, and how](docs/en/bochs.md). On this same system, follow registers, the GDT, the IDT, page tables, and the TSS as the kernel enters protected mode, takes interrupts, and switches tasks.
-4. **Watch the cost of that execution in gem5.** Along the same kernel paths, follow cycles, cache misses, and pipeline stalls.
+4. **Watch the cost of that execution in gem5.** [What you measure, and how](docs/en/gem5.md). Along the same kernel paths, follow cycles, cache misses, and pipeline stalls.
 5. **Then look at other architectures.** After the x86 path works, keep the kernel small and add RISC-V, then ARM, to see what belongs to one architecture and what belongs to the operating system itself.
 
 Work that is not on this path is listed in [the backlog](docs/en/backlog.md). Generating `rootfs/hdc-0.11.img` is there. It stays off the numbered steps.
@@ -47,7 +47,7 @@ To compare a new download with this tree, check that SHA256, unpack the tarball,
 
 The editor hides `reference/` from the file tree and from search. Open that path when comparing it with `src/linux-0.11/`.
 
-`src/linux-0.11/` builds on a contemporary host. `labs/qemu/launch.sh` boots it in QEMU, and the shell can run `ls`. Press F5 and choose **Linux 0.11** to stop on the first instruction and step in the editor. `labs/bochs/launch.sh` opens the same disks in Bochs; the debugger in that terminal shows the GDT, the IDT, page tables, and the TSS. gem5 is not set up yet.
+`src/linux-0.11/` builds on a contemporary host. `labs/qemu/launch.sh` boots it in QEMU, and the shell can run `ls`. Press F5 and choose **Linux 0.11** to stop on the first instruction and step in the editor. `labs/bochs/launch.sh` opens the same disks in Bochs; the debugger in that terminal shows the GDT, the IDT, page tables, and the TSS. `labs/gem5/launch.sh` runs `setup_paging` on a gem5 out-of-order CPU and prints cycles, L1 misses, and a store-queue stall. `labs/gem5/launch.sh timer` continues into the kernel and counts the first `_timer_interrupt`; with no root disk that interrupt is taken from the `panic("Unable to mount root")` spin. `labs/gem5/launch.sh schedule` counts the first `_schedule`, which switches from task 0 to task 1. `labs/gem5/launch.sh copy_page` counts the first 4KiB `rep movsl` inlined in `_un_wp_page`.
 
 `rootfs/hdc-0.11.img` is the teaching disk from [hello-os/linux-0.11](https://github.com/hello-os/linux-0.11) `rootfs/hdc-0.11.img.xz`. SHA256: `c83a9837f3f804882a76756f2ff46349467bdf66ed44e301a6c5e124f414b6d1`. Size: 127631360 bytes. The generated `Image` is not kept in git.
 

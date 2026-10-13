@@ -36,6 +36,10 @@ QEMU 监听 `127.0.0.1:5901`。用 `ssh -L 5901:127.0.0.1:5901 <user>@<这台机
 
 `bochs-sdl` 提供 SDL 窗口，有显示器时它就是 VGA 控制台。`bochsbios` 提供 `BIOS-bochs-legacy`。`vgabios` 提供 `vgabios.bin`。没有显示器时，`bochs` 主包里已经带了 VNC 控制台，端口是 5900。
 
-## 后面的步骤
+## 第 4 步，周期和 miss
 
-gem5 是第 4 步的工具，用来看周期和 cache miss。`script/bootstrap.sh` 现在还不安装它。
+`python3-dev` 提供 `Python.h`。gem5 会把这个 Python 嵌进去。`python3-venv` 提供 `python3 -m venv`。`labs/gem5/build.sh` 建立 `.gem5/.venv`，并把 scons 装在那里。`m4` 是 gem5 编译时要跑的宏处理器。
+
+gem5 本身不是 apt 包。`labs/gem5/build.sh` 把固定的 v25.1.0.1 克隆到 `.gem5/`，打上 `labs/gem5/linux-0.11-x86.patch`，并编译出 `.gem5/build/X86/gem5.opt`。这个目录不纳入 git。
+
+`labs/gem5/launch.sh` 加载 `src/linux-0.11/tools/system.elf` 并运行 `setup_paging`。它模拟的机器写在 `labs/gem5/linux-0.11-x86.py` 里。`labs/gem5/launch.sh timer`、`schedule` 和 `copy_page` 从 `startup_32` 开始，分别统计第一次时钟中断、第一次 `_schedule`，以及第一次内联的 `copy_page`。每次都打印周期、L1 miss 和流水线停顿。[量什么](gem5.md)。编译时可能会警告 GCC 比 gem5 源码里写的范围更新。它编出来的二进制就是 `launch.sh` 运行的那个。

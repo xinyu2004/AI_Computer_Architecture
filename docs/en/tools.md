@@ -36,6 +36,10 @@ QEMU listens on `127.0.0.1:5901`. Forward it with `ssh -L 5901:127.0.0.1:5901 <u
 
 `bochs-sdl` provides the SDL window, which is the VGA console when a display is available. `bochsbios` provides `BIOS-bochs-legacy`. `vgabios` provides `vgabios.bin`. With no display, the main `bochs` package already includes the VNC console, on port 5900.
 
-## Later steps
+## Step 4, cycles and misses
 
-gem5 is the step 4 tool, for cycles and cache misses. `script/bootstrap.sh` does not install it yet.
+`python3-dev` provides `Python.h`. gem5 embeds this Python. `python3-venv` provides `python3 -m venv`. `labs/gem5/build.sh` creates `.gem5/.venv` and installs scons there. `m4` is a macro processor the gem5 build runs.
+
+gem5 itself is not an apt package. `labs/gem5/build.sh` clones the pinned release v25.1.0.1 into `.gem5/`, applies `labs/gem5/linux-0.11-x86.patch`, and compiles `.gem5/build/X86/gem5.opt`. That directory stays out of git.
+
+`labs/gem5/launch.sh` loads `src/linux-0.11/tools/system.elf` and runs `setup_paging`. The machine it simulates is described in `labs/gem5/linux-0.11-x86.py`. `labs/gem5/launch.sh timer`, `schedule`, and `copy_page` start at `startup_32` and count the first timer interrupt, the first `_schedule`, and the first inlined `copy_page`. Each prints cycles, L1 misses, and pipeline stalls. [What those runs measure](gem5.md). The build can print a warning that GCC is newer than the range named in the gem5 sources. The binary it produces is the one `launch.sh` runs.
