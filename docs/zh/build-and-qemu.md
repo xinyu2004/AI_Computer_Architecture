@@ -69,7 +69,7 @@ make -C src/linux-0.11
 把该镜像当作软盘，把 `rootfs/hdc-0.11.img` 当作第一块硬盘启动：
 
 ```bash
-labs/qemu/launch.sh
+labs/i386/qemu/launch.sh
 ```
 
 内核把控制台写在 VGA 内存里。`-nographic` 会是空白。本机桌面会打开 GTK 窗口。经 SSH 转发 X11 时打开 SDL 窗口：转发过来的显示编号从 10 开始（`localhost:10.0`），脚本以此来和本机的 `:0` 区分。这条路径同时关闭 OpenGL，从而避开 XLaunch 这类 X 服务器打出的 GTK 显示器警告。
@@ -77,7 +77,7 @@ labs/qemu/launch.sh
 窗口没有出来时，用 VNC 启动同一台机器：
 
 ```bash
-labs/qemu/launch.sh vnc
+labs/i386/qemu/launch.sh vnc
 ```
 
 这时 QEMU 监听 `127.0.0.1:5901`。在你坐着的那台电脑上转发该端口，再用 VNC 客户端打开 `localhost:5901`：
@@ -86,7 +86,7 @@ labs/qemu/launch.sh vnc
 ssh -L 5901:127.0.0.1:5901 <user>@<这台机器>
 ```
 
-想改掉自动选择时，同一个脚本也接受 `gtk` 或 `sdl`。没有 `DISPLAY`、也没有 Wayland 显示时，`labs/qemu/launch.sh` 自己就会选 VNC。
+想改掉自动选择时，同一个脚本也接受 `gtk` 或 `sdl`。没有 `DISPLAY`、也没有 Wayland 显示时，`labs/i386/qemu/launch.sh` 自己就会选 VNC。
 
 硬盘和软盘参数始终是：
 
@@ -100,7 +100,7 @@ qemu-system-i386 -m 16M -boot a -nic none \
 
 ## 调试
 
-单独运行 `labs/qemu/launch.sh` 和调试是两件事。脚本负责把系统启动到 shell。单步和寄存器在编辑器里，暂停着的 QEMU 窗口本身没有这些信息。
+单独运行 `labs/i386/qemu/launch.sh` 和调试是两件事。脚本负责把系统启动到 shell。单步和寄存器在编辑器里，暂停着的 QEMU 窗口本身没有这些信息。
 
 按 F5，选择 **Linux 0.11**。`.vscode/tasks.json` 在后台启动同一个 `launch.sh`，并暂停 CPU。`.vscode/launch.json` 把 GDB 连到 `127.0.0.1:1234`，载入符号，停在这个系统的第一条指令：
 
@@ -116,6 +116,6 @@ bootsect.s: movw $BOOTSEG, %ax
 
 `-g` 留在这些 ELF 里。软盘 `Image` 仍是纯二进制，编译仍是 `-O2`，所以后面的 C 源码行有时会被跳过。BIOS 没有符号。
 
-如果 F5 提示磁盘被锁住，说明已经有一个 QEMU 窗口打开着 `rootfs/hdc-0.11.img`。关掉它，再开始这次调试。单独运行 `labs/qemu/launch.sh` 不会暂停，也不会打开 GDB 端口。
+如果 F5 提示磁盘被锁住，说明已经有一个 QEMU 窗口打开着 `rootfs/hdc-0.11.img`。关掉它，再开始这次调试。单独运行 `labs/i386/qemu/launch.sh` 不会暂停，也不会打开 GDB 端口。
 
 `diff -rq reference/linux-0.11 src/linux-0.11` 看到的是上面的工具链、引导语法、镜像打包和编译器修正。调度、分页和系统调用本身仍是 1991 年的代码。Bochs 和 gem5 是后面的步骤。

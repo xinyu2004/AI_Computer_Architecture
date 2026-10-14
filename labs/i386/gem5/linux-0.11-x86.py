@@ -1,5 +1,5 @@
 # The x86 machine gem5 uses for the Linux 0.11 measurements.
-# labs/gem5/launch.sh sets GEM5_ROOT and passes the flags.
+# labs/i386/gem5/launch.sh sets GEM5_ROOT and passes the flags.
 # This file builds the machine. It does not choose which kernel path
 # to count; launch.sh does that.
 
@@ -13,7 +13,7 @@ from m5.util import addToPath, fatal
 
 gem5_root = os.environ.get("GEM5_ROOT")
 if not gem5_root:
-    sys.stderr.write("GEM5_ROOT is not set. Run labs/gem5/launch.sh.\n")
+    sys.stderr.write("GEM5_ROOT is not set. Run labs/i386/gem5/launch.sh.\n")
     sys.exit(1)
 
 addToPath(os.path.join(gem5_root, "configs"))

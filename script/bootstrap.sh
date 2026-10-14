@@ -13,11 +13,11 @@ Step 2, build the kernel
   gcc-multilib       gcc -m32           this kernel is 32-bit 80386 code
 
 Step 2, run it
-  qemu-system-x86    qemu-system-i386   labs/qemu/launch.sh opens this emulator
+  qemu-system-x86    qemu-system-i386   labs/i386/qemu/launch.sh opens this emulator
   gdb                gdb                F5, Linux 0.11, stops on the first instruction
 
 Step 3, machine state
-  bochs              bochs              labs/bochs/launch.sh, internal debugger
+  bochs              bochs              labs/i386/bochs/launch.sh, internal debugger
   bochs-sdl          SDL window         the VGA console when a display is available
   bochsbios          BIOS-bochs-legacy  firmware for that PC
   vgabios            vgabios.bin        VGA firmware
@@ -32,12 +32,13 @@ Step 5, RV32
                      riscv64-unknown-elf-gcc
                                         build src/rv32 for RV32
   qemu-system-riscv  qemu-system-riscv32
-                                        labs/rv32/launch.sh opens this emulator
+                                        labs/rv32/qemu/launch.sh opens this emulator
+  gdb-multiarch      gdb-multiarch      F5, RV32, stops at _start
 
 If the archive has no qemu-system-riscv package, qemu-system-misc is
 installed instead.
 
-gem5 itself is not an apt package. labs/gem5/build.sh clones v25.1.0.1
+gem5 itself is not an apt package. labs/i386/gem5/build.sh clones v25.1.0.1
 into .gem5/ and compiles it. See docs/en/tools.md.
 EOF
 
@@ -64,4 +65,4 @@ fi
 sudo apt-get install -y build-essential gcc-multilib qemu-system-x86 gdb \
 	bochs bochs-sdl bochsbios vgabios \
 	python3-dev python3-venv m4 \
-	gcc-riscv64-unknown-elf "$riscv_qemu"
+	gcc-riscv64-unknown-elf gdb-multiarch "$riscv_qemu"

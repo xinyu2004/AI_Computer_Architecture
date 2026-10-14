@@ -1,14 +1,14 @@
 #!/bin/sh
 # Run one Linux 0.11 path in gem5 and print cycles, L1 misses,
 # and one pipeline stall. Run from anywhere:
-#   labs/gem5/launch.sh
-#   labs/gem5/launch.sh timer
-#   labs/gem5/launch.sh schedule
-#   labs/gem5/launch.sh copy_page
+#   labs/i386/gem5/launch.sh
+#   labs/i386/gem5/launch.sh timer
+#   labs/i386/gem5/launch.sh schedule
+#   labs/i386/gem5/launch.sh copy_page
 # This does not boot the floppy. QEMU and Bochs stay as they are.
 
 set -e
-root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+root=$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)
 cd "$root"
 
 elf=src/linux-0.11/tools/system.elf
@@ -19,7 +19,7 @@ if [ ! -f "$elf" ]; then
 	exit 1
 fi
 if [ ! -x "$gem5" ]; then
-	echo "Build gem5 first: labs/gem5/build.sh" >&2
+	echo "Build gem5 first: labs/i386/gem5/build.sh" >&2
 	exit 1
 fi
 
@@ -53,7 +53,7 @@ copy_page)
 	max_tick=5000000000
 	;;
 *)
-	echo "Usage: labs/gem5/launch.sh [paging|timer|schedule|copy_page]" >&2
+	echo "Usage: labs/i386/gem5/launch.sh [paging|timer|schedule|copy_page]" >&2
 	exit 1
 	;;
 esac
@@ -83,7 +83,7 @@ export GEM5_ROOT="$root/.gem5"
 mkdir -p m5out
 log=m5out/gem5.log
 if ! "$gem5" --outdir=m5out \
-	labs/gem5/linux-0.11-x86.py \
+	labs/i386/gem5/linux-0.11-x86.py \
 	--kernel="$root/$elf" \
 	--cpu-type=X86O3CPU \
 	--caches \

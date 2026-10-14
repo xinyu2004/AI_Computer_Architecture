@@ -1,7 +1,7 @@
 #!/bin/sh
 # Boot the step-2 floppy image in QEMU. Run from anywhere:
-#   labs/qemu/launch.sh
-#   labs/qemu/launch.sh vnc
+#   labs/i386/qemu/launch.sh
+#   labs/i386/qemu/launch.sh vnc
 # The editor's Linux 0.11 debug session sets QEMU_GDB=1 and runs this
 # same script. Without that variable the machine boots straight to the shell.
 # The kernel writes VGA memory, so this script does not pass -nographic.
@@ -10,7 +10,7 @@
 # argument, QEMU listens on 127.0.0.1:5901.
 
 set -e
-root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+root=$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)
 
 if ! command -v qemu-system-i386 >/dev/null 2>&1; then
 	echo "qemu-system-i386 is not installed. Run script/bootstrap.sh." >&2
@@ -54,7 +54,7 @@ detect_display() {
 }
 
 if [ "$#" -gt 1 ]; then
-	echo "Usage: labs/qemu/launch.sh [gtk|sdl|vnc]" >&2
+	echo "Usage: labs/i386/qemu/launch.sh [gtk|sdl|vnc]" >&2
 	exit 1
 fi
 
@@ -62,7 +62,7 @@ case ${1:-} in
 gtk|sdl|vnc) mode=$1 ;;
 '') mode=$(detect_display) ;;
 *)
-	echo "Usage: labs/qemu/launch.sh [gtk|sdl|vnc]" >&2
+	echo "Usage: labs/i386/qemu/launch.sh [gtk|sdl|vnc]" >&2
 	exit 1
 	;;
 esac

@@ -1,7 +1,7 @@
 #include "rv32.h"
 
 /*
- * Walk the flattened device tree OpenSBI passed in a1.
+ * Walk the flattened device tree QEMU passed in a1.
  * The UART's reg property is a child address on the soc bus. On this
  * virt board that bus publishes an empty ranges property, so the child
  * address is the physical address. A non-empty ranges would need a
@@ -23,6 +23,8 @@ struct fdt_frame {
 	int phys;
 	int child_phys;
 	int is_uart;
+	int is_virtio;
+	int is_test;
 	int have_reg;
 	uint32_t reg;
 };
@@ -93,7 +95,7 @@ static int read_reg(const uint8_t *val, uint32_t len, uint32_t ac, uint32_t *out
 	return 0;
 }
 
-int fdt_uart_timebase(const void *dtb, uint32_t *uart, uint32_t *timebase)
+int fdt_parse(const void *dtb, struct fdt_info *out)
 {
 	const uint8_t *b = dtb;
 	uint32_t magic;
@@ -105,6 +107,11 @@ int fdt_uart_timebase(const void *dtb, uint32_t *uart, uint32_t *timebase)
 	int got_uart = 0;
 	int got_time = 0;
 	struct fdt_frame stack[12];
+
+	out->uart = 0;
+	out->timebase = 0;
+	out->nvirtio = 0;
+	out->test = 0;
 
 	if (dtb == 0)
 		return -1;
@@ -148,6 +155,8 @@ int fdt_uart_timebase(const void *dtb, uint32_t *uart, uint32_t *timebase)
 				fr->child_phys = fr->phys;
 			}
 			fr->is_uart = 0;
+			fr->is_virtio = 0;
+			fr->is_test = 0;
 			fr->have_reg = 0;
 			fr->reg = 0;
 			while (p < totalsize && b[p] != '\0')
@@ -164,8 +173,16 @@ int fdt_uart_timebase(const void *dtb, uint32_t *uart, uint32_t *timebase)
 			if (fr->is_uart && !got_uart) {
 				if (!fr->phys || !fr->have_reg)
 					return -1;
-				*uart = fr->reg;
+				out->uart = fr->reg;
 				got_uart = 1;
+			}
+			if (fr->is_virtio && fr->phys && fr->have_reg &&
+			    out->nvirtio < FDT_VIRTIO_MAX)
+				out->virtio[out->nvirtio++] = fr->reg;
+			if (fr->is_test && out->test == 0) {
+				if (!fr->phys || !fr->have_reg)
+					return -1;
+				out->test = fr->reg;
 			}
 			depth--;
 			continue;
@@ -194,6 +211,13 @@ int fdt_uart_timebase(const void *dtb, uint32_t *uart, uint32_t *timebase)
 		else if (name_is(prop, "compatible") &&
 			 contains_string((const char *)val, len, "ns16550a"))
 			fr->is_uart = 1;
+		else if (name_is(prop, "compatible") &&
+			 contains_string((const char *)val, len, "virtio,mmio"))
+			fr->is_virtio = 1;
+		else if (name_is(prop, "compatible") &&
+			 (contains_string((const char *)val, len, "sifive,test0") ||
+			  contains_string((const char *)val, len, "sifive,test1")))
+			fr->is_test = 1;
 		else if (name_is(prop, "reg")) {
 			uint32_t addr;
 
@@ -203,10 +227,10 @@ int fdt_uart_timebase(const void *dtb, uint32_t *uart, uint32_t *timebase)
 			}
 		} else if (name_is(prop, "timebase-frequency") && !got_time) {
 			if (len == 4) {
-				*timebase = fdt32(val);
+				out->timebase = fdt32(val);
 				got_time = 1;
 			} else if (len == 8 && fdt32(val) == 0) {
-				*timebase = fdt32(val + 4);
+				out->timebase = fdt32(val + 4);
 				got_time = 1;
 			}
 		}

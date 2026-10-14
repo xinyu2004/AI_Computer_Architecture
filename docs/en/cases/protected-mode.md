@@ -18,7 +18,7 @@ From the repository root:
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 Type the commands in that terminal. The VGA window is the console. The script prints the linear address of `lmsw`. On this link the example is `0x90301`. Use the address the script printed:

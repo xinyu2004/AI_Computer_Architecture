@@ -7,6 +7,7 @@
  * one stop bit. These registers are memory, not an I/O port.
  */
 #define LSR 5
+#define LSR_DR 0x01
 #define LSR_THRE 0x20
 
 static volatile uint8_t *uart;
@@ -16,6 +17,13 @@ void uart_init(uint32_t base)
 	uart = (volatile uint8_t *)base;
 	uart[3] = 0x03;
 	uart[1] = 0x00;
+}
+
+int uart_getc(void)
+{
+	while ((uart[LSR] & LSR_DR) == 0)
+		;
+	return uart[0];
 }
 
 void uart_putc(char c)

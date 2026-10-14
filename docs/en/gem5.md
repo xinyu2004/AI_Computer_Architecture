@@ -4,15 +4,15 @@
 
 This is learning step 4. The first path is `setup_paging` in `boot/head.s`, the same function the Bochs paging stop lands on. The run counts cycles, L1 cache misses, and one pipeline stall for that function.
 
-`src/linux-0.11/` is not modified. There is no gem5 opcode in the kernel. Pressing F5 still debugs the QEMU machine. `labs/bochs/launch.sh` is unchanged.
+`src/linux-0.11/` is not modified. There is no gem5 opcode in the kernel. Pressing F5 still debugs the QEMU machine. `labs/i386/bochs/launch.sh` is unchanged.
 
 ## What this run is
 
-gem5's usual x86 full-system loader refuses a 32-bit kernel and builds a 64-bit long-mode handoff. `labs/gem5/linux-0.11-x86.patch` changes the local gem5 tree so an ELF32 kernel starts differently:
+gem5's usual x86 full-system loader refuses a 32-bit kernel and builds a 64-bit long-mode handoff. `labs/i386/gem5/linux-0.11-x86.patch` changes the local gem5 tree so an ELF32 kernel starts differently:
 
 - Protected mode is already on. Paging is off. Physical-address extension and long mode stay off, so the page tables `setup_paging` writes are the 32-bit ones in `head.s`.
 - Code uses selector 8 and data uses selector `0x10`, the flat segments in the kernel GDT at `_gdt`.
-- The CPU starts at `setup_paging`. That symbol moves every time the kernel is linked. `labs/gem5/launch.sh` prints the address from `tools/system.elf`.
+- The CPU starts at `setup_paging`. That symbol moves every time the kernel is linked. `labs/i386/gem5/launch.sh` prints the address from `tools/system.elf`.
 - In the real boot, `ret` at the end of `setup_paging` enters `_main`, because `after_page_tables` pushed that return address. This run plants a different return address, so `ret` lands on an `hlt` at physical `0x80000`. The stack slot is at `0x7F000`. Both are above the loaded kernel and outside the five pages the function clears at physical 0.
 
 The CPU is gem5's out-of-order model, clocked at 1 GHz, with a 32KiB L1 instruction cache and a 32KiB L1 data cache. Cache lines are 64 bytes. These cycles are from that model. They are not a cycle-accurate 80386. The instructions are still the 1991 function.
@@ -25,18 +25,18 @@ From the repository root, after `script/bootstrap.sh`:
 
 ```bash
 make -C src/linux-0.11
-labs/gem5/build.sh
-labs/gem5/launch.sh
-labs/gem5/launch.sh timer
-labs/gem5/launch.sh schedule
-labs/gem5/launch.sh copy_page
+labs/i386/gem5/build.sh
+labs/i386/gem5/launch.sh
+labs/i386/gem5/launch.sh timer
+labs/i386/gem5/launch.sh schedule
+labs/i386/gem5/launch.sh copy_page
 ```
 
-`labs/gem5/build.sh` clones gem5 v25.1.0.1 into `.gem5/`, applies `labs/gem5/linux-0.11-x86.patch`, and compiles `build/X86/gem5.opt`. `.gem5/` is build state and stays out of git. The first build takes a while. Later builds reuse it. The patch changes gem5 so this 32-bit kernel can start. It is not a kernel patch.
+`labs/i386/gem5/build.sh` clones gem5 v25.1.0.1 into `.gem5/`, applies `labs/i386/gem5/linux-0.11-x86.patch`, and compiles `build/X86/gem5.opt`. `.gem5/` is build state and stays out of git. The first build takes a while. Later builds reuse it. The patch changes gem5 so this 32-bit kernel can start. It is not a kernel patch.
 
-`labs/gem5/launch.sh` is the command to run. It reads the symbol address from `tools/system.elf` and prints the counters. gem5 itself needs a description of the machine, which is `labs/gem5/linux-0.11-x86.py`: an out-of-order x86 CPU, 32KiB L1 caches, 16MiB of memory, and a 1 GHz clock. Every measurement on this step uses that same machine. `launch.sh` passes the kernel and which path to count. The Python file is not run on its own.
+`labs/i386/gem5/launch.sh` is the command to run. It reads the symbol address from `tools/system.elf` and prints the counters. gem5 itself needs a description of the machine, which is `labs/i386/gem5/linux-0.11-x86.py`: an out-of-order x86 CPU, 32KiB L1 caches, 16MiB of memory, and a 1 GHz clock. Every measurement on this step uses that same machine. `launch.sh` passes the kernel and which path to count. The Python file is not run on its own.
 
-`labs/gem5/launch.sh` then prints this build's `setup_paging` address and the counters from `m5out/stats.txt`. One run of this tree printed:
+`labs/i386/gem5/launch.sh` then prints this build's `setup_paging` address and the counters from `m5out/stats.txt`. One run of this tree printed:
 
 ```text
 setup_paging at 0x5450
@@ -57,7 +57,7 @@ The full gem5 log is `m5out/gem5.log`. It includes a warning that the DRAM chip 
 
 ## The timer interrupt
 
-`labs/gem5/launch.sh timer` starts at `startup_32`. The same patch leaves the CPU in 32-bit protected mode with paging off, and programs the 8259 the way `boot/setup.s` does: master vector base `0x20`, slave base `0x28`, both masks `0xFF`. IRQ0 stays on the 8259 and is delivered to the CPU. Boot parameters at `0x90000` describe 16MiB of memory, and `0x901FC` holds root device `0x0301`. The stack pointer is the value stored at `_stack_start`.
+`labs/i386/gem5/launch.sh timer` starts at `startup_32`. The same patch leaves the CPU in 32-bit protected mode with paging off, and programs the 8259 the way `boot/setup.s` does: master vector base `0x20`, slave base `0x28`, both masks `0xFF`. IRQ0 stays on the 8259 and is delivered to the CPU. Boot parameters at `0x90000` describe 16MiB of memory, and `0x901FC` holds root device `0x0301`. The stack pointer is the value stored at `_stack_start`.
 
 The kernel then executes its own `startup_32`, including `setup_paging`, and continues into `_main`. This run has no root disk, so task 1's `setup()` calls `panic("Unable to mount root")` and spins on the `jmp` at `_panic+0x22`. About 10ms after `sched_init` programs the PIT, IRQ0 is taken from that spin. The handler is the 1991 `_timer_interrupt`: it saves registers, increments `_jiffies`, writes the EOI, calls `_do_timer`, and returns with `iret`. The interrupted code is in the kernel, so this tick does not call `_schedule`.
 
@@ -80,7 +80,7 @@ QEMU and Bochs still boot the disks and reach a shell. This gem5 command does no
 
 ## schedule
 
-`labs/gem5/launch.sh schedule` uses that same boot and counts the first `_schedule`. Task 0 reaches it from `pause()` after `fork` returns. The call selects task 1 and executes `ljmp` to TSS selector `0x30`.
+`labs/i386/gem5/launch.sh schedule` uses that same boot and counts the first `_schedule`. Task 0 reaches it from `pause()` after `fork` returns. The call selects task 1 and executes `ljmp` to TSS selector `0x30`.
 
 Counters restart when the PC becomes `_schedule`, before `push %esi`. They stop when the PC becomes task 1's first instruction, before that instruction runs. On this run that address is linear `0x4012f0c`: CS is `0x0f`, the segment base is `0x4000000`, and the offset `0x12f0c` is the return from `fork` in `_main`. The task switch is inside the window. The `ret` at the end of `_schedule` runs when task 0 is switched back. This run does not get there. Task 1 continues and later hits the same `panic("Unable to mount root")`.
 
@@ -101,7 +101,7 @@ The store queue does not fill. The pipeline stall is the serialize stall around 
 
 ## copy_page
 
-`copy_page` in `mm/memory.c` is a macro, so it has no symbol. The body is `rep movsl` of 1024 dwords, 4KiB. `-O2` inlines it in `_un_wp_page`. `labs/gem5/launch.sh copy_page` finds that `rep movsl` and counts the first time it runs. On this link the instruction is at `0x93a3`. A relink moves it; the script prints the address it found.
+`copy_page` in `mm/memory.c` is a macro, so it has no symbol. The body is `rep movsl` of 1024 dwords, 4KiB. `-O2` inlines it in `_un_wp_page`. `labs/i386/gem5/launch.sh copy_page` finds that `rep movsl` and counts the first time it runs. On this link the instruction is at `0x93a3`. A relink moves it; the script prints the address it found.
 
 That first copy is the write-protect copy in `un_wp_page`, after task 1 has started and written a shared page. Counters restart when the PC becomes the `rep movsl`, before it runs, and stop when the PC becomes the next instruction, before that instruction runs.
 

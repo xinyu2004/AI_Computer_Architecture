@@ -18,7 +18,7 @@ Bochs，在仓库根目录：
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 脚本打印 `_timer_interrupt` 的地址。这一次链接的例子是 `0x6ee4`。用脚本打出来的地址：
@@ -33,7 +33,7 @@ sreg
 gem5：
 
 ```bash
-labs/gem5/launch.sh timer
+labs/i386/gem5/launch.sh timer
 ```
 
 计数从 PC 变成 `_timer_interrupt`、`push %ds` 还没执行时开始，停在被打断的那条指令还没再执行的时候。细节见 [gem5](../gem5.md)。

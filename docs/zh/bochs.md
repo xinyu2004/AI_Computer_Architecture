@@ -10,7 +10,7 @@
 
 ## 这台机器
 
-`labs/bochs/bochsrc` 描述一台 16MB 的 PC。软盘是 `Image`。硬盘是 `rootfs/hdc-0.11.img`，410 柱面、16 磁头、38 扇区，与文件大小一致。没有网卡。
+`labs/i386/bochs/bochsrc` 描述一台 16MB 的 PC。软盘是 `Image`。硬盘是 `rootfs/hdc-0.11.img`，410 柱面、16 磁头、38 扇区，与文件大小一致。没有网卡。
 
 CPU 型号是 `pentium`。这是 Bochs 2.8 里最老的具名型号，它仍然执行这份内核使用的 386 保护模式指令。`ips=1000000` 让软盘的模拟延时在更少的指令之后结束，启动会在几秒内到达调试器。BIOS 是 `/usr/share/bochs/BIOS-bochs-legacy`。
 
@@ -20,7 +20,7 @@ CPU 型号是 `pentium`。这是 Bochs 2.8 里最老的具名型号，它仍然�
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 脚本先打印这一次编译对应的断点，然后 Bochs 占用这个终端。调试器提示类似：
@@ -32,7 +32,7 @@ Bochs internal debugger, type 'help' for help or 'c' to continue
 本机有显示器时打开 SDL 窗口，窗口就是 VGA 控制台。命令打在这个终端里。没有显示器，或者显式指定时，控制台走 VNC：
 
 ```bash
-labs/bochs/launch.sh vnc
+labs/i386/bochs/launch.sh vnc
 ```
 
 Bochs 会打印它打开的端口，通常是 `5900`。VNC 客户端连上之后，调试器提示才出现。在你坐着的那台电脑上：
@@ -45,7 +45,7 @@ ssh -L 5900:127.0.0.1:5900 <user>@<这台机器>
 
 `q` 退出调试器。`help` 列出命令。如果 Bochs 报告磁盘镜像被锁住，说明另一个模拟器已经打开了 `rootfs/hdc-0.11.img`。关掉那个窗口，再运行这个脚本。
 
-下面的地址是某一次链接的例子。`labs/bochs/launch.sh` 会打印你刚编译出来的地址。内核地址每次链接都会变。`lmsw` 的地址只在 `boot/setup.s` 改动时才变。setup 装在物理地址 `0x90200`，脚本再加上 `boot/setup.elf` 里 `lmsw` 的文件偏移。
+下面的地址是某一次链接的例子。`labs/i386/bochs/launch.sh` 会打印你刚编译出来的地址。内核地址每次链接都会变。`lmsw` 的地址只在 `boot/setup.s` 改动时才变。setup 装在物理地址 `0x90200`，脚本再加上 `boot/setup.elf` 里 `lmsw` 的文件偏移。
 
 ## 保护模式
 

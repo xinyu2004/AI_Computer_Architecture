@@ -18,14 +18,14 @@
 
 ## How to start
 
-From the repository root, after `labs/gem5/build.sh` has compiled gem5:
+From the repository root, after `labs/i386/gem5/build.sh` has compiled gem5:
 
 ```bash
 make -C src/linux-0.11
-labs/gem5/launch.sh
+labs/i386/gem5/launch.sh
 ```
 
-The script reads the address of `setup_paging` from `tools/system.elf` and prints it. On this link the example is `0x5450`. The counters start at the function entry and stop on the `hlt` the `ret` lands on. The machine is `labs/gem5/linux-0.11-x86.py`. Details are in [gem5](../gem5.md).
+The script reads the address of `setup_paging` from `tools/system.elf` and prints it. On this link the example is `0x5450`. The counters start at the function entry and stop on the `hlt` the `ret` lands on. The machine is `labs/i386/gem5/linux-0.11-x86.py`. Details are in [gem5](../gem5.md).
 
 To watch PG change from clear to set, use Bochs. Do not single-step the fill loop. The script prints the same address:
 

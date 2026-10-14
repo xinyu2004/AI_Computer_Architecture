@@ -16,8 +16,9 @@ core
 **/tools/system.elf
 **/tools/build
 
-# RV32 kernel image. labs/rv32/launch.sh builds it.
+# RV32 kernel and user programs. labs/rv32/qemu/launch.sh builds them.
 src/rv32/kernel.elf
+src/rv32/user/*.elf
 # cpp output of keyboard.S; the source is keyboard.S
 **/kernel/chr_drv/keyboard.s
 
@@ -34,5 +35,5 @@ rootfs/hdc-0.11.img
 m5out/
 *.log
 
-# gem5 source and build. labs/gem5/build.sh clones the pinned release here.
+# gem5 source and build. labs/i386/gem5/build.sh clones the pinned release here.
 .gem5/

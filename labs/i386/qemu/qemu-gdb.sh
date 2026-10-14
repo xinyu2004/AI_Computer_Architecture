@@ -1,10 +1,10 @@
 #!/bin/sh
 # Started by the "qemu-gdb" task in .vscode/tasks.json when the
 # Linux 0.11 debug session begins. This is not a separate lab command.
-# labs/qemu/launch.sh without this task still boots straight to the shell.
+# labs/i386/qemu/launch.sh without this task still boots straight to the shell.
 
 set -e
-root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+root=$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)
 
 if [ ! -f "$root/src/linux-0.11/boot/bootsect.elf" ]; then
 	echo "Rebuild so debug info exists: make -C src/linux-0.11" >&2
@@ -16,7 +16,7 @@ if ! command -v gdb >/dev/null 2>&1; then
 fi
 
 echo "Display: starting QEMU"
-QEMU_GDB=1 "$root/labs/qemu/launch.sh" &
+QEMU_GDB=1 "$root/labs/i386/qemu/launch.sh" &
 pid=$!
 
 i=0

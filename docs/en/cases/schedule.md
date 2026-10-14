@@ -18,7 +18,7 @@ Bochs:
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 The script prints the address of `_schedule`. On this link the example is `0x6814`. Use the address the script printed:
@@ -35,7 +35,7 @@ Look at `sreg` again after the `ljmp`.
 gem5:
 
 ```bash
-labs/gem5/launch.sh schedule
+labs/i386/gem5/launch.sh schedule
 ```
 
 The counters start at the entry of `_schedule`, before `push %esi`, and stop before task 1's first instruction runs. The `ret` at the end of `_schedule` runs when task 0 is switched back. This run does not get there.

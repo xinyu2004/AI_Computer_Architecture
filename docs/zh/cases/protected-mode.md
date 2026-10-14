@@ -18,7 +18,7 @@ CPU 从实模式进入保护模式，靠的是 CR0 的 PE 位和一张 GDT。`lm
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 命令打在这个终端里。VGA 窗口是控制台。脚本会打印 `lmsw` 的线性地址。这一次链接的例子是 `0x90301`。用脚本打出来的那个地址：

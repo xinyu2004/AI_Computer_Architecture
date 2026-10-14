@@ -6,17 +6,18 @@ One row is one instruction whose name does not say what it does. Ordinary `add`,
 
 A smaller parenthetical mark sits in the first column. (RV32) is a mechanism of this CPU. A row with no parentheses is the same kind of action the 80386 kernel still does, under another instruction.
 
-## Supervisor mode
+## Machine mode, then supervisor mode
 
-OpenSBI leaves the hart in S-mode. These instructions talk to that mode, or ask M-mode to do something S-mode is not allowed to do.
+`_start` runs in M-mode. `mret` enters S-mode. A user program's `ecall` then enters S-mode again.
 
 | Instruction | Name | Effect |
 | --- | --- | --- |
-| `ecall` <sub>(RV32)</sub> | Environment call | Trap to the next more privileged mode. Here that is OpenSBI. `a7` selects the call: set the timer, or shut down. |
+| `mret` <sub>(RV32)</sub> | Machine return | Jump to `mepc` and enter the mode named by `mstatus.MPP`. `_start` uses it to enter S-mode. |
+| `ecall` <sub>(RV32)</sub> | Environment call | Trap to the next more privileged mode. A user program uses it to enter the kernel. `a7` selects read, write, exec, exit, list, or one of timer, schedule, and copy_page. |
 | `sret` <sub>(RV32)</sub> | Supervisor return | Jump to `sepc` and copy `SPIE` back into `SIE`. This is how a trap handler returns. |
 | `sfence.vma` | Supervisor fence, virtual memory | Drop translations the CPU has cached. It runs before and after the write to `satp`. |
-| `csrr` / `csrw` | CSR read / CSR write | Move a value between a register and a control register. This kernel uses `satp`, `stvec`, `sepc`, `scause`, `sie`, `sstatus`, `time`, and `timeh`. |
-| `wfi` | Wait for interrupt | Pause until an interrupt is pending. The boot uses it to wait for the one timer tick. |
+| `csrr` / `csrw` | CSR read / CSR write | Move a value between a register and a control register. M-mode uses `pmpaddr0`, `pmpcfg0`, `medeleg`, `mideleg`, `mstatus`, `mepc`, `mcounteren`, and `menvcfgh`. S-mode uses `satp`, `stvec`, `sepc`, `scause`, `sie`, `sstatus`, `sscratch`, `time`, `timeh`, `stimecmp`, and `stimecmph`. |
+| `wfi` | Wait for interrupt | Pause until an interrupt is pending. The timer job uses it to wait for one tick. |
 
 ## Bits named above
 

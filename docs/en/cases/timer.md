@@ -18,7 +18,7 @@ Bochs, from the repository root:
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 The script prints the address of `_timer_interrupt`. On this link the example is `0x6ee4`. Use the address the script printed:
@@ -33,7 +33,7 @@ sreg
 gem5:
 
 ```bash
-labs/gem5/launch.sh timer
+labs/i386/gem5/launch.sh timer
 ```
 
 The counters start when the PC becomes `_timer_interrupt`, before `push %ds`, and stop before the interrupted instruction runs again. Details are in [gem5](../gem5.md).

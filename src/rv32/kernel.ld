@@ -3,7 +3,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = 0x80400000;
+	. = 0x80000000;
 
 	.text : {
 		*(.text.init)
@@ -27,7 +27,7 @@ SECTIONS
 		*(COMMON)
 		. = ALIGN(16);
 		stack = .;
-		. += 4096;
+		. += 8192;
 		stack_top = .;
 		. = ALIGN(4);
 		__bss_end = .;

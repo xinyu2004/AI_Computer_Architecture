@@ -18,7 +18,7 @@ Bochs：
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 脚本打印 `_schedule` 的地址。这一次链接的例子是 `0x6814`。用脚本打出来的地址：
@@ -35,7 +35,7 @@ sreg
 gem5：
 
 ```bash
-labs/gem5/launch.sh schedule
+labs/i386/gem5/launch.sh schedule
 ```
 
 计数从 `_schedule` 入口、`push %esi` 之前开始，停在任务 1 的第一条指令还没执行的时候。`_schedule` 末尾的 `ret` 要等任务 0 被切回来。这一次到不了那里。

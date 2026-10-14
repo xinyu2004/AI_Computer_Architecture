@@ -1,4 +1,4 @@
-# Linux 0.11, step 3. labs/bochs/launch.sh starts Bochs with this file.
+# Linux 0.11, step 3. labs/i386/bochs/launch.sh starts Bochs with this file.
 # The script appends the display_library line and runs from the repository root.
 
 romimage: file=/usr/share/bochs/BIOS-bochs-legacy, options=fastboot
@@ -27,4 +27,4 @@ panic: action=fatal
 error: action=report
 info: action=report
 debug: action=ignore
-log: labs/bochs/bochs.log
+log: labs/i386/bochs/bochs.log

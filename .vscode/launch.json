@@ -22,7 +22,32 @@
             "postRemoteConnectCommands": [
                 {
                     "description": "Hardware breakpoints require the QEMU connection",
-                    "text": "source labs/qemu/boot.gdb"
+                    "text": "source labs/i386/qemu/boot.gdb"
+                }
+            ]
+        },
+        {
+            "name": "RV32",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "rv32-gdb",
+            "program": "${workspaceFolder}/src/rv32/kernel.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:1234",
+            "launchCompleteCommand": "exec-continue",
+            "stopAtEntry": true,
+            "setupCommands": [
+                {
+                    "description": "boot.gdb uses paths from the repository root",
+                    "text": "cd ${workspaceFolder}"
+                }
+            ],
+            "postRemoteConnectCommands": [
+                {
+                    "description": "Stop at the kernel's first instruction",
+                    "text": "source labs/rv32/qemu/boot.gdb"
                 }
             ]
         }

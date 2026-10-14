@@ -10,16 +10,24 @@
  * V is present. R W X are read, write, and execute. A and D are the
  * accessed and dirty bits; this kernel sets both so the first reference
  * does not fault. The UART page is not executable.
+ *
+ * User programs live at 0x10000, with a stack page at 0x80000. Those
+ * virtual pages point at kernel memory, so the kernel fills them by
+ * physical address. The U bit lets the program read them after sret.
  */
 
 #define PTE_V (1u << 0)
 #define PTE_R (1u << 1)
 #define PTE_W (1u << 2)
 #define PTE_X (1u << 3)
+#define PTE_U (1u << 4)
 #define PTE_A (1u << 6)
 #define PTE_D (1u << 7)
 
 #define NLEAF 4
+#define USER_BASE 0x10000u
+#define USER_CODE_PAGES 16
+#define USER_STACK_VA 0x80000u
 
 extern char _start[];
 extern char _end[];
@@ -27,6 +35,8 @@ extern char _end[];
 static uint32_t root[1024] __attribute__((aligned(4096)));
 static uint32_t leaf[NLEAF][1024] __attribute__((aligned(4096)));
 static int nleaf;
+static uint8_t user_pages[USER_CODE_PAGES][4096] __attribute__((aligned(4096)));
+static uint8_t user_stack[4096] __attribute__((aligned(4096)));
 
 static uint32_t *leaf_for(uint32_t vpn1)
 {
@@ -68,15 +78,55 @@ static int map_range(uint32_t start, uint32_t end, uint32_t flags)
 	return 0;
 }
 
-void vm_init(uint32_t uart)
+void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio, uint32_t test)
 {
 	uint32_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
 	uint32_t mmio = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+	int i;
 
 	if (map_range((uint32_t)_start, (uint32_t)_end, flags) != 0)
-		sbi_shutdown();
+		poweroff();
 	if (map_page(uart & ~0xfffu, uart & ~0xfffu, mmio) != 0)
-		sbi_shutdown();
+		poweroff();
+	for (i = 0; i < nvirtio; i++) {
+		if (map_page(virtio[i] & ~0xfffu, virtio[i] & ~0xfffu, mmio) != 0)
+			poweroff();
+	}
+	if (test != 0 && map_page(test & ~0xfffu, test & ~0xfffu, mmio) != 0)
+		poweroff();
+}
+
+void vm_map_user(void)
+{
+	uint32_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_U | PTE_A | PTE_D;
+	uint32_t stack = PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D;
+	int i;
+
+	for (i = 0; i < USER_CODE_PAGES; i++) {
+		uint32_t va = USER_BASE + (uint32_t)i * 4096u;
+		uint32_t pa = (uint32_t)user_pages[i];
+
+		if (map_page(va, pa, flags) != 0)
+			poweroff();
+	}
+	if (map_page(USER_STACK_VA, (uint32_t)user_stack, stack) != 0)
+		poweroff();
+	asm volatile("sfence.vma" ::: "memory");
+}
+
+void vm_user_clear(void)
+{
+	memset(user_pages, 0, sizeof user_pages);
+	memset(user_stack, 0, sizeof user_stack);
+}
+
+uint32_t vm_user_pa(uint32_t va)
+{
+	if (va >= USER_BASE && va < USER_BASE + USER_CODE_PAGES * 4096u)
+		return (uint32_t)user_pages[(va - USER_BASE) >> 12] + (va & 0xfffu);
+	if (va >= USER_STACK_VA && va < USER_STACK_TOP)
+		return (uint32_t)user_stack + (va & 0xfffu);
+	return 0;
 }
 
 void vm_on(void)

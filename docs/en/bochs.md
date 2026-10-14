@@ -10,7 +10,7 @@ Pressing F5 still debugs the QEMU machine and stops on the first instruction of 
 
 ## The machine
 
-`labs/bochs/bochsrc` is a 16MB PC. The floppy is `Image`. The hard disk is `rootfs/hdc-0.11.img`, 410 cylinders, 16 heads, 38 sectors, which is the size of that file. There is no network device.
+`labs/i386/bochs/bochsrc` is a 16MB PC. The floppy is `Image`. The hard disk is `rootfs/hdc-0.11.img`, 410 cylinders, 16 heads, 38 sectors, which is the size of that file. There is no network device.
 
 The CPU model is `pentium`. That is the oldest named model in Bochs 2.8, and it still runs the 386 protected-mode instructions this kernel uses. `ips=1000000` makes the floppy's emulated delays finish after fewer instructions, so the boot reaches the debugger in a few seconds. The BIOS is `/usr/share/bochs/BIOS-bochs-legacy`.
 
@@ -20,7 +20,7 @@ From the repository root, after `script/bootstrap.sh`:
 
 ```bash
 make -C src/linux-0.11
-labs/bochs/launch.sh
+labs/i386/bochs/launch.sh
 ```
 
 The script prints the breakpoints for this build, then Bochs takes the terminal. The debugger prompt looks like this:
@@ -32,7 +32,7 @@ Bochs internal debugger, type 'help' for help or 'c' to continue
 A local display opens an SDL window. That window is the VGA console. Type the commands in this terminal. With no display, or with an explicit request, the console is VNC:
 
 ```bash
-labs/bochs/launch.sh vnc
+labs/i386/bochs/launch.sh vnc
 ```
 
 Bochs prints the port it opened, usually `5900`. The debugger prompt appears after a VNC client connects. From the computer you are sitting at:
@@ -45,7 +45,7 @@ Then open a VNC client on `localhost:5900`.
 
 `q` leaves the debugger. `help` lists commands. If Bochs reports that the disk image is locked, another emulator already has `rootfs/hdc-0.11.img` open. Close that window and start this script again.
 
-The addresses below are an example from one link. `labs/bochs/launch.sh` prints the addresses for the tree you just built. The kernel addresses change every time you link. The `lmsw` address changes only when `boot/setup.s` changes. Setup is loaded at physical `0x90200`, and the script adds the file offset of `lmsw` from `boot/setup.elf`.
+The addresses below are an example from one link. `labs/i386/bochs/launch.sh` prints the addresses for the tree you just built. The kernel addresses change every time you link. The `lmsw` address changes only when `boot/setup.s` changes. Setup is loaded at physical `0x90200`, and the script adds the file offset of `lmsw` from `boot/setup.elf`.
 
 ## Protected mode
 

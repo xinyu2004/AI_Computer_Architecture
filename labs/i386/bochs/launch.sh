@@ -1,13 +1,13 @@
 #!/bin/sh
 # Open the step-2 disks in Bochs. Run from anywhere:
-#   labs/bochs/launch.sh
-#   labs/bochs/launch.sh vnc
+#   labs/i386/bochs/launch.sh
+#   labs/i386/bochs/launch.sh vnc
 # The debugger prompt stays in this terminal. A local display opens an
 # SDL window. With no display, or with the vnc argument, Bochs listens
 # for a VNC client and the debugger prompt appears after the client connects.
 
 set -e
-root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+root=$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)
 cd "$root"
 
 if ! command -v bochs >/dev/null 2>&1; then
@@ -29,7 +29,7 @@ if [ ! -f src/linux-0.11/boot/setup.elf ] || [ ! -f src/linux-0.11/tools/system.
 fi
 
 if [ "$#" -gt 1 ]; then
-	echo "Usage: labs/bochs/launch.sh [sdl|vnc]" >&2
+	echo "Usage: labs/i386/bochs/launch.sh [sdl|vnc]" >&2
 	exit 1
 fi
 
@@ -43,7 +43,7 @@ sdl|vnc) mode=$1 ;;
 	fi
 	;;
 *)
-	echo "Usage: labs/bochs/launch.sh [sdl|vnc]" >&2
+	echo "Usage: labs/i386/bochs/launch.sh [sdl|vnc]" >&2
 	exit 1
 	;;
 esac
@@ -120,6 +120,6 @@ q quits. help lists the debugger commands.
 EOF
 
 tmp=$(mktemp)
-cat labs/bochs/bochsrc > "$tmp"
+cat labs/i386/bochs/bochsrc > "$tmp"
 printf '%s\n' "$display" >> "$tmp"
 exec bochs -q -f "$tmp"

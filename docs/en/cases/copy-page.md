@@ -10,7 +10,7 @@ When a shared page is written, the kernel allocates another page and copies 4KiB
 
 ## What to read
 
-`copy_page` at line 54 of `src/linux-0.11/mm/memory.c`. `-O2` inlines it into `un_wp_page` at line 225. There is no `copy_page` symbol. `labs/gem5/launch.sh copy_page` finds the `rep movsl` inside `_un_wp_page` on every run.
+`copy_page` at line 54 of `src/linux-0.11/mm/memory.c`. `-O2` inlines it into `un_wp_page` at line 225. There is no `copy_page` symbol. `labs/i386/gem5/launch.sh copy_page` finds the `rep movsl` inside `_un_wp_page` on every run.
 
 ## How to start
 
@@ -18,7 +18,7 @@ From the repository root:
 
 ```bash
 make -C src/linux-0.11
-labs/gem5/launch.sh copy_page
+labs/i386/gem5/launch.sh copy_page
 ```
 
 The script prints the address it found. On this link the example is `0x93a3`. The counters start before that `rep movsl` runs and stop before the next instruction runs. The first execution is the copy task 1 makes when it writes a shared page, before `panic("Unable to mount root")`.

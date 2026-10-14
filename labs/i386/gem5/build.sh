@@ -1,12 +1,12 @@
 #!/bin/sh
 # Build the pinned gem5 used by step 4. Run from anywhere:
-#   labs/gem5/build.sh
+#   labs/i386/gem5/build.sh
 # gem5 itself is not a distro package. This script clones v25.1.0.1
 # into .gem5/, applies the Linux 0.11 x86 patch, and compiles
 # build/X86/gem5.opt. scons comes from pip.
 
 set -e
-root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+root=$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)
 cd "$root"
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -28,8 +28,8 @@ if [ ! -f .gem5/SConstruct ]; then
 fi
 
 if ! grep -q initI386Protected .gem5/src/arch/x86/fs_workload.cc; then
-	echo "Applying labs/gem5/linux-0.11-x86.patch"
-	patch -p1 -d .gem5 < labs/gem5/linux-0.11-x86.patch
+	echo "Applying labs/i386/gem5/linux-0.11-x86.patch"
+	patch -p1 -d .gem5 < labs/i386/gem5/linux-0.11-x86.patch
 fi
 
 if [ ! -x .gem5/.venv/bin/python ]; then

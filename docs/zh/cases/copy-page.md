@@ -10,7 +10,7 @@
 
 ## 读哪里
 
-`src/linux-0.11/mm/memory.c` 第 54 行的 `copy_page`。`-O2` 把它内联进第 225 行的 `un_wp_page`。符号表里没有 `copy_page`。`labs/gem5/launch.sh copy_page` 每次从 `_un_wp_page` 里找出那条 `rep movsl`。
+`src/linux-0.11/mm/memory.c` 第 54 行的 `copy_page`。`-O2` 把它内联进第 225 行的 `un_wp_page`。符号表里没有 `copy_page`。`labs/i386/gem5/launch.sh copy_page` 每次从 `_un_wp_page` 里找出那条 `rep movsl`。
 
 ## 怎么启动
 
@@ -18,7 +18,7 @@
 
 ```bash
 make -C src/linux-0.11
-labs/gem5/launch.sh copy_page
+labs/i386/gem5/launch.sh copy_page
 ```
 
 脚本打印这次找到的地址。这一次链接的例子是 `0x93a3`。计数从这条 `rep movsl` 还没执行时开始，停在下一条指令还没执行的时候。第一次执行是任务 1 写共享页时的那次复制，发生在 `panic("Unable to mount root")` 之前。

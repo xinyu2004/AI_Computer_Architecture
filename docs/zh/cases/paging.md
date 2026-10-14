@@ -18,14 +18,14 @@
 
 ## 怎么启动
 
-在仓库根目录，gem5 已经由 `labs/gem5/build.sh` 编好之后：
+在仓库根目录，gem5 已经由 `labs/i386/gem5/build.sh` 编好之后：
 
 ```bash
 make -C src/linux-0.11
-labs/gem5/launch.sh
+labs/i386/gem5/launch.sh
 ```
 
-脚本从 `tools/system.elf` 读出 `setup_paging` 的地址并打印。这一次链接的例子是 `0x5450`。计数从函数入口开始，停在 `ret` 落到的 `hlt` 上。机器描述在 `labs/gem5/linux-0.11-x86.py`。细节见 [gem5](../gem5.md)。
+脚本从 `tools/system.elf` 读出 `setup_paging` 的地址并打印。这一次链接的例子是 `0x5450`。计数从函数入口开始，停在 `ret` 落到的 `hlt` 上。机器描述在 `labs/i386/gem5/linux-0.11-x86.py`。细节见 [gem5](../gem5.md)。
 
 要看 PG 从 0 变成 1，用 Bochs，不要单步填表的循环。脚本会打印同一地址：
 
