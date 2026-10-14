@@ -141,5 +141,18 @@ int main(int argc, char **argv)
 	if (n > SYS_SIZE * 16)
 		die("System is too big");
 	write_exact(system, n);
+	/*
+	 * bootsect.s reads SYSSIZE paragraphs from the floppy, past the
+	 * last byte of the kernel. A short file makes Bochs hit EOF on
+	 * those sectors. The extra bytes are zeros.
+	 */
+	memset(zero, 0, sizeof zero);
+	while (n < SYS_SIZE * 16) {
+		i = SYS_SIZE * 16 - n;
+		if (i > (int) sizeof zero)
+			i = (int) sizeof zero;
+		write_exact(zero, i);
+		n += i;
+	}
 	return 0;
 }

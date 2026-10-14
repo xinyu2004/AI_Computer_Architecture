@@ -48,13 +48,26 @@ gem5 这一次打印过：
 
 ```text
 _schedule at 0x6814
-cycles                  1205   system.cpu.numCycles
-instructions             730   system.cpu.commitStats0.numInsts
-microops                1525   system.cpu.commitStats0.numOps
-L1 I misses                8   system.cpu.icache.overallMisses::total
-L1 D misses                1   system.cpu.dcache.overallMisses::total
-store-queue stalls         0   system.cpu.rename.SQFullEvents
-serialize stalls         274   system.cpu.rename.status::SerializeStall
+cycles                      1205   system.cpu.numCycles
+instructions                 730   system.cpu.commitStats0.numInsts
+microops                    1525   system.cpu.commitStats0.numOps
+cpi                     1.650685   system.cpu.cpi
+loads                        162   system.cpu.commitStats0.numLoadInsts
+stores                        20   system.cpu.commitStats0.numStoreInsts
+L1 I accesses                168   system.cpu.icache.overallAccesses::total
+L1 I miss rate          0.047619   system.cpu.icache.overallMissRate::total
+L1 I misses                    8   system.cpu.icache.overallMisses::total
+L1 D accesses                216   system.cpu.dcache.overallAccesses::total
+L1 D miss rate          0.004630   system.cpu.dcache.overallMissRate::total
+L1 D misses                    1   system.cpu.dcache.overallMisses::total
+L1 D miss cycles           53.00   system.cpu.dcache.overallAvgMissLatency::total
+branches                     281   system.cpu.branchPred.committed_0::total
+branch mispredicts           27   system.cpu.branchPred.mispredicted_0::total
+store-queue stalls             0   system.cpu.rename.SQFullEvents
+issue-queue stalls           138   system.cpu.rename.IQFullEvents
+serialize stalls             274   system.cpu.rename.status::SerializeStall
 ```
 
-日志里的切换是 TSS 选择子 `0x30`，CS `0x0f`，线性地址 `0x4012f0c`。其中 `0x4000000` 是任务 1 的段基址，`0x12f0c` 是 `_main` 里 `fork` 的返回偏移。流水线停顿是 serialize stall。结束行是 `schedule switched`。这次运行随后仍会走到 `panic("Unable to mount root")`。
+日志里的切换是 TSS 选择子 `0x30`，CS `0x0f`，线性地址 `0x4012f0c`。其中 `0x4000000` 是任务 1 的段基址，`0x12f0c` 是 `_main` 里 `fork` 的返回偏移。CPI 是 1.65。issue queue 停顿是 138，旁边是 274 次 serialize stall。结束行是 `schedule switched`。这次运行随后仍会走到 `panic("Unable to mount root")`。
+
+同一次运行把整个窗口写进 `m5out/instructions.txt`、`m5out/pipeline.txt` 和 `m5out/pipeline.html`，从 `push %esi` 一直到任务切换的微码。

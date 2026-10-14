@@ -27,17 +27,30 @@ The `stosl` in [Filling the page tables](paging.md) is the loop to put beside th
 
 ## What you should see
 
-gem5 counts the whole repetition as 2 instructions. The work shows up as microops. One run of this tree printed:
+gem5 counts the whole repetition as 1 instruction, the `rep movsl` itself. The work shows up as microops. One run of this tree printed:
 
 ```text
 copy_page at 0x93a3
-cycles                  2565   system.cpu.numCycles
-instructions               2   system.cpu.commitStats0.numInsts
-microops                6155   system.cpu.commitStats0.numOps
-L1 I misses                0   system.cpu.icache.overallMisses::total
-L1 D misses              970   system.cpu.dcache.overallMisses::total
-store-queue stalls       917   system.cpu.rename.SQFullEvents
-serialize stalls          20   system.cpu.rename.status::SerializeStall
+cycles                      2565   system.cpu.numCycles
+instructions                   1   system.cpu.commitStats0.numInsts
+microops                    6151   system.cpu.commitStats0.numOps
+cpi                  2565.000000   system.cpu.cpi
+loads                       1024   system.cpu.commitStats0.numLoadInsts
+stores                      1024   system.cpu.commitStats0.numStoreInsts
+L1 I accesses                  2   system.cpu.icache.overallAccesses::total
+L1 I miss rate                 0   system.cpu.icache.overallMissRate::total
+L1 I misses                    0   system.cpu.icache.overallMisses::total
+L1 D accesses               2043   system.cpu.dcache.overallAccesses::total
+L1 D miss rate          0.474792   system.cpu.dcache.overallMissRate::total
+L1 D misses                  970   system.cpu.dcache.overallMisses::total
+L1 D miss cycles           51.44   system.cpu.dcache.overallAvgMissLatency::total
+branches                    1024   system.cpu.branchPred.committed_0::total
+branch mispredicts            1   system.cpu.branchPred.mispredicted_0::total
+store-queue stalls           917   system.cpu.rename.SQFullEvents
+issue-queue stalls           147   system.cpu.rename.IQFullEvents
+serialize stalls              20   system.cpu.rename.status::SerializeStall
 ```
 
-The data cache recorded 1030 reads and 1013 writes. Of the 970 read misses, 61 brought in a new line and 909 hit a line already being filled. `get_free_page` had just cleared the destination page, so the stores hit. The store-queue stalls are the pipeline stall for this loop. The exit line is `copy_page returned`.
+CPI is 2565 because it divides by the x86 instruction count, which stays at 1. The 6151 microops are the size of the work. The data cache recorded 1030 reads and 1013 writes. Of the 970 read misses, 61 brought in a new line and 909 hit a line already being filled. The miss rate is 0.47, and an average data miss takes 51.44 cycles. `get_free_page` had just cleared the destination page, so the stores hit. The store-queue stalls are the pipeline stall for this loop. Issue-queue stalls are 147. The exit line is `copy_page returned`.
+
+The same run writes `m5out/instructions.txt`, `m5out/pipeline.txt`, and `m5out/pipeline.html`. The repetition is long, so the files keep the first 32 microops. On this run the note was "the first 32 of 6151 microops", and those lines are the start of the `rep movsl`. The 6151 is the same number as `microops`.

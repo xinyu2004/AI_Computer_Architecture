@@ -6,10 +6,12 @@ vgaromimage: file=/usr/share/vgabios/vgabios.bin
 megs: 16
 
 # pentium is the oldest named CPU in this Bochs package. The kernel uses
-# 386 instructions. A low ips value makes the floppy delays finish after
-# fewer instructions, so the boot reaches the debugger promptly.
+# 386 instructions. ips is low so a floppy delay expires after fewer
+# instructions. The VGA timer must follow that clock. The default
+# realtime VGA timer sleeps on the host clock whenever the guest hlts.
 cpu: model=pentium, count=1, ips=1000000, reset_on_triple_fault=1
 clock: sync=none, time0=local
+vga: realtime=0
 
 pci: enabled=0
 mouse: enabled=0

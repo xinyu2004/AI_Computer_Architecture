@@ -44,13 +44,26 @@ One gem5 run of this tree printed:
 
 ```text
 setup_paging at 0x5450
-cycles                 36047   system.cpu.numCycles
-instructions           12307   system.cpu.commitStats0.numInsts
-microops               65577   system.cpu.commitStats0.numOps
-L1 I misses               12   system.cpu.icache.overallMisses::total
-L1 D misses              322   system.cpu.dcache.overallMisses::total
-store-queue stalls     23832   system.cpu.rename.SQFullEvents
-serialize stalls         172   system.cpu.rename.status::SerializeStall
+cycles                     36047   system.cpu.numCycles
+instructions               12307   system.cpu.commitStats0.numInsts
+microops                   65577   system.cpu.commitStats0.numOps
+cpi                     2.928984   system.cpu.cpi
+loads                          1   system.cpu.commitStats0.numLoadInsts
+stores                      9220   system.cpu.commitStats0.numStoreInsts
+L1 I accesses                 56   system.cpu.icache.overallAccesses::total
+L1 I miss rate          0.214286   system.cpu.icache.overallMissRate::total
+L1 I misses                   12   system.cpu.icache.overallMisses::total
+L1 D accesses               9223   system.cpu.dcache.overallAccesses::total
+L1 D miss rate          0.034913   system.cpu.dcache.overallMissRate::total
+L1 D misses                  322   system.cpu.dcache.overallMisses::total
+L1 D miss cycles           56.11   system.cpu.dcache.overallAvgMissLatency::total
+branches                    9217   system.cpu.branchPred.committed_0::total
+branch mispredicts           26   system.cpu.branchPred.mispredicted_0::total
+store-queue stalls         23832   system.cpu.rename.SQFullEvents
+issue-queue stalls             4   system.cpu.rename.IQFullEvents
+serialize stalls             172   system.cpu.rename.status::SerializeStall
 ```
 
-Of the 322 data misses, 320 are writes, one line for each 64 bytes of those 20KiB. The other two are reads. The store-queue stalls are the pipeline stall for this loop: `stosl` fills the queue faster than memory drains it. For the run you just started, the numbers the script prints are the ones to use.
+CPI is 2.93 on 9220 stores and 1 load. Of the 322 data misses, 320 are writes, one line for each 64 bytes of those 20KiB. The other two are reads. The miss rate is 0.035, and an average data miss takes 56.11 cycles. The store-queue stalls are the pipeline stall for this loop: `stosl` fills the queue faster than memory drains it. Issue-queue stalls are 4. For the run you just started, the numbers the script prints are the ones to use.
+
+The same run writes `m5out/instructions.txt`, `m5out/pipeline.txt`, and `m5out/pipeline.html`. The fill is one loop repeated, so the files keep the first 32 microops and the last 12. On this run that was 44 of 65577 microops, and the last of them write CR3, CR0, and then return. 65577 is the same number as `microops`.

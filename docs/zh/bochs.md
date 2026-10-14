@@ -12,7 +12,7 @@
 
 `labs/i386/bochs/bochsrc` 描述一台 16MB 的 PC。软盘是 `Image`。硬盘是 `rootfs/hdc-0.11.img`，410 柱面、16 磁头、38 扇区，与文件大小一致。没有网卡。
 
-CPU 型号是 `pentium`。这是 Bochs 2.8 里最老的具名型号，它仍然执行这份内核使用的 386 保护模式指令。`ips=1000000` 让软盘的模拟延时在更少的指令之后结束，启动会在几秒内到达调试器。BIOS 是 `/usr/share/bochs/BIOS-bochs-legacy`。
+CPU 型号是 `pentium`。这是 Bochs 2.8 里最老的具名型号，它仍然执行这份内核使用的 386 保护模式指令。`ips=1000000` 和 `clock: sync=none` 让一次软盘延时在更少的指令之后结束。`vga: realtime=0` 让 VGA 定时器走同一套钟。默认的实时 VGA 定时器会在客机执行 `hlt` 时按宿主机的钟睡觉。BIOS 是 `/usr/share/bochs/BIOS-bochs-legacy`。
 
 ## 怎样检查
 

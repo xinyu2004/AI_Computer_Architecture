@@ -18,6 +18,24 @@ Before step 2, run `script/bootstrap.sh` once. [What it installs, and why](docs/
 
 Work that is not on this path is listed in [the backlog](docs/en/backlog.md). Generating `rootfs/hdc-0.11.img` is there. It stays off the numbered steps.
 
+## What it looks like
+
+F5 on **Linux 0.11** stops at `start` in `boot/bootsect.s`. EIP is `0x7c00`, still in real mode, before the boot sector is copied up.
+
+![Stopped at the first instruction of the boot sector](figures/linux_debug.png)
+
+Bochs stops at `_schedule`, on `push %esi`. `info tss` shows the task state, `sreg` shows the segments, and the guest shell has run `echo hello`.
+
+![Bochs at schedule, with the task state and a guest shell](figures/bochs.png)
+
+`labs/i386/gem5/launch.sh` counts `setup_paging`: 36047 cycles on this run, and 23832 store-queue stalls from the `stosl` loop.
+
+![gem5 counters for setup_paging](figures/gem5.png)
+
+`labs/i386/gem5/launch.sh timer` writes `labs/i386/gem5/m5out/pipeline.html`. Each row is one microop of `_timer_interrupt`. The left edge is fetch. The long bar is the write to DS.
+
+![Pipeline of the timer interrupt](figures/pipe.png)
+
 ## What you come away with
 
 Along this path, the source leads to what the operating system does, that behavior leads to the machine state behind it, and that state leads to what the execution costs. A concrete architecture and the operating system itself become visible side by side.
@@ -49,7 +67,7 @@ To compare a new download with this tree, check that SHA256, unpack the tarball,
 
 The editor hides `reference/` from the file tree and from search. Open that path when comparing it with `src/linux-0.11/`.
 
-`src/linux-0.11/` builds on a contemporary host. `labs/i386/qemu/launch.sh` boots it in QEMU, and the shell can run `ls`. Press F5 and choose **Linux 0.11** to stop on the first instruction and step in the editor. `labs/i386/bochs/launch.sh` opens the same disks in Bochs; the debugger in that terminal shows the GDT, the IDT, page tables, and the TSS. `labs/i386/gem5/launch.sh` runs `setup_paging` on a gem5 out-of-order CPU and prints cycles, L1 misses, and a store-queue stall. `labs/i386/gem5/launch.sh timer` continues into the kernel and counts the first `_timer_interrupt`; with no root disk that interrupt is taken from the `panic("Unable to mount root")` spin. `labs/i386/gem5/launch.sh schedule` counts the first `_schedule`, which switches from task 0 to task 1. `labs/i386/gem5/launch.sh copy_page` counts the first 4KiB `rep movsl` inlined in `_un_wp_page`. `labs/rv32/qemu/launch.sh` builds the RV32 kernel and boots it to a shell on QEMU's virt board; `help` lists the commands, and the shell can run `ls`. Press F5 and choose **RV32** to stop at `_start` in `entry.S`. **Linux 0.11** in that menu is still the 80386 session. Both listen on `127.0.0.1:1234`; start one at a time.
+`src/linux-0.11/` builds on a contemporary host. `labs/i386/qemu/launch.sh` boots it in QEMU, and the shell can run `ls`. Press F5 and choose **Linux 0.11** to stop on the first instruction and step in the editor. `labs/i386/bochs/launch.sh` opens the same disks in Bochs; the debugger in that terminal shows the GDT, the IDT, page tables, and the TSS. `labs/i386/gem5/launch.sh` runs `setup_paging` on a gem5 out-of-order CPU and prints cycles, L1 misses, and a store-queue stall. `labs/i386/gem5/launch.sh timer` continues into the kernel and counts the first `_timer_interrupt`; with no root disk that interrupt is taken from the `panic("Unable to mount root")` spin. `labs/i386/gem5/launch.sh schedule` counts the first `_schedule`, which switches from task 0 to task 1. `labs/i386/gem5/launch.sh copy_page` counts the first 4KiB `rep movsl` inlined in `_un_wp_page`. `labs/i386/gem5/launch.sh from START to END` counts a stretch whose two addresses are known before the run; the constraints are in [gem5](docs/en/gem5.md). `labs/rv32/qemu/launch.sh` builds the RV32 kernel and boots it to a shell on QEMU's virt board; `help` lists the commands, and the shell can run `ls`. Press F5 and choose **RV32** to stop at `_start` in `entry.S`. **Linux 0.11** in that menu is still the 80386 session. Both listen on `127.0.0.1:1234`; start one at a time.
 
 `rootfs/hdc-0.11.img` is the teaching disk from [hello-os/linux-0.11](https://github.com/hello-os/linux-0.11) `rootfs/hdc-0.11.img.xz`. SHA256: `c83a9837f3f804882a76756f2ff46349467bdf66ed44e301a6c5e124f414b6d1`. Size: 127631360 bytes. The generated `Image` is not kept in git.
 

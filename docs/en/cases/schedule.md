@@ -48,13 +48,26 @@ One gem5 run of this tree printed:
 
 ```text
 _schedule at 0x6814
-cycles                  1205   system.cpu.numCycles
-instructions             730   system.cpu.commitStats0.numInsts
-microops                1525   system.cpu.commitStats0.numOps
-L1 I misses                8   system.cpu.icache.overallMisses::total
-L1 D misses                1   system.cpu.dcache.overallMisses::total
-store-queue stalls         0   system.cpu.rename.SQFullEvents
-serialize stalls         274   system.cpu.rename.status::SerializeStall
+cycles                      1205   system.cpu.numCycles
+instructions                 730   system.cpu.commitStats0.numInsts
+microops                    1525   system.cpu.commitStats0.numOps
+cpi                     1.650685   system.cpu.cpi
+loads                        162   system.cpu.commitStats0.numLoadInsts
+stores                        20   system.cpu.commitStats0.numStoreInsts
+L1 I accesses                168   system.cpu.icache.overallAccesses::total
+L1 I miss rate          0.047619   system.cpu.icache.overallMissRate::total
+L1 I misses                    8   system.cpu.icache.overallMisses::total
+L1 D accesses                216   system.cpu.dcache.overallAccesses::total
+L1 D miss rate          0.004630   system.cpu.dcache.overallMissRate::total
+L1 D misses                    1   system.cpu.dcache.overallMisses::total
+L1 D miss cycles           53.00   system.cpu.dcache.overallAvgMissLatency::total
+branches                     281   system.cpu.branchPred.committed_0::total
+branch mispredicts           27   system.cpu.branchPred.mispredicted_0::total
+store-queue stalls             0   system.cpu.rename.SQFullEvents
+issue-queue stalls           138   system.cpu.rename.IQFullEvents
+serialize stalls             274   system.cpu.rename.status::SerializeStall
 ```
 
-The switch in the log uses TSS selector `0x30`, CS `0x0f`, and linear address `0x4012f0c`. `0x4000000` is task 1's segment base. `0x12f0c` is the offset of the return from `fork` in `_main`. The pipeline stall is the serialize stall. The exit line is `schedule switched`. The run still goes on to `panic("Unable to mount root")`.
+The switch in the log uses TSS selector `0x30`, CS `0x0f`, and linear address `0x4012f0c`. `0x4000000` is task 1's segment base. `0x12f0c` is the offset of the return from `fork` in `_main`. CPI is 1.65. Issue-queue stalls are 138, beside 274 serialize stalls. The exit line is `schedule switched`. The run still goes on to `panic("Unable to mount root")`.
+
+The same run writes `m5out/instructions.txt`, `m5out/pipeline.txt`, and `m5out/pipeline.html` for this whole window, from `push %esi` through the task-switch microcode.

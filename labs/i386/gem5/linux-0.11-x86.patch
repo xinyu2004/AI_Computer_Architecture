@@ -17,33 +17,48 @@ index fce92b1..5d93dd6 100644
          tc->setReg(intRegMicro(15), errorCode);
      }
 diff --git a/src/arch/x86/fs_workload.cc b/src/arch/x86/fs_workload.cc
-index c95754a..fd59347 100644
+index c95754a..74e3176 100644
 --- a/src/arch/x86/fs_workload.cc
 +++ b/src/arch/x86/fs_workload.cc
-@@ -38,7 +38,17 @@
+@@ -38,7 +38,20 @@
  
  #include "arch/x86/fs_workload.hh"
  
++#include <cstdlib>
 +#include <cstring>
 +
  #include "arch/x86/bios/acpi.hh"
 +#include "arch/x86/interrupts.hh"
 +#include "arch/x86/intmessage.hh"
 +#include "arch/x86/regs/int.hh"
++#include "base/debug.hh"
 +#include "base/statistics.hh"
 +#include "cpu/base.hh"
++#include "cpu/o3/linux011_window.hh"
 +#include "dev/x86/i8259.hh"
 +#include "mem/translating_port_proxy.hh"
 +#include "sim/sim_object.hh"
  #include "arch/x86/bios/intelmp.hh"
  #include "arch/x86/bios/smbios.hh"
  #include "arch/x86/faults.hh"
-@@ -154,6 +164,510 @@ FsWorkload::addExitOnKernelOopsEvent()
+@@ -154,6 +167,596 @@ FsWorkload::addExitOnKernelOopsEvent()
  }
  
  
 +namespace
 +{
++
++// O3PipeView records each microop's pipeline stages. Turn it on for
++// the measured window and leave it on. The last committed microop is
++// destroyed after the PC event, and that is when it is recorded.
++void
++linux011TraceWindow(bool on)
++{
++    if (on)
++        ::gem5::setDebugFlag("O3PipeView");
++    else
++        ::gem5::clearDebugFlag("O3PipeView");
++}
 +
 +// Fires when setup_paging's ret lands on the hlt planted below.
 +class I386HaltExit : public PCEvent
@@ -56,6 +71,9 @@ index c95754a..fd59347 100644
 +    void
 +    process(ThreadContext *tc) override
 +    {
++        // Leave O3PipeView on so this instruction is still recorded
++        // when it is destroyed. Commit stops here.
++        o3::linux011StopCommit();
 +        exitSimLoop("setup_paging returned", 0);
 +    }
 +};
@@ -70,6 +88,7 @@ index c95754a..fd59347 100644
 +    void
 +    process(ThreadContext *tc) override
 +    {
++        o3::linux011StopCommit();
 +        exitSimLoop("timer_interrupt returned", 0);
 +    }
 +};
@@ -103,6 +122,7 @@ index c95754a..fd59347 100644
 +    ret_eip = letoh(ret_eip);
 +
 +    statistics::reset();
++    linux011TraceWindow(true);
 +    timerExitPcEvent = new I386TimerExit(tc, ret_eip);
 +    inform("timer interrupt entered, counters restarted, "
 +           "return EIP=%#x.\n", ret_eip);
@@ -128,6 +148,7 @@ index c95754a..fd59347 100644
 +    void
 +    process(ThreadContext *tc) override
 +    {
++        o3::linux011StopCommit();
 +        exitSimLoop(cause, 0);
 +    }
 +
@@ -253,6 +274,7 @@ index c95754a..fd59347 100644
 +        return;
 +    linux011CountArmed = true;
 +    statistics::reset();
++    linux011TraceWindow(true);
 +    inform("schedule entered, counters restarted.\n");
 +}
 +
@@ -328,6 +350,58 @@ index c95754a..fd59347 100644
 +           ret_eip);
 +}
 +
++Addr
++linux011HexArg(const std::string &commandLine, const char *key)
++{
++    const std::string needle(key);
++    auto pos = commandLine.find(needle);
++    fatal_if(pos == std::string::npos,
++             "missing %s on the gem5 command line.", key);
++    std::string raw = commandLine.substr(pos + needle.size());
++    auto space = raw.find(' ');
++    if (space != std::string::npos)
++        raw.resize(space);
++    if (raw.size() > 2 && raw[0] == '0' && (raw[1] == 'x' || raw[1] == 'X'))
++        raw = raw.substr(2);
++    char *stopped = nullptr;
++    unsigned long value = std::strtoul(raw.c_str(), &stopped, 16);
++    fatal_if(raw.empty() || stopped == raw.c_str() || *stopped != '\0',
++             "bad address after %s.", key);
++    return static_cast<Addr>(value);
++}
++
++class I386RangeEntry : public PCEvent
++{
++  public:
++    I386RangeEntry(PCEventScope *q, Addr pc, Addr end, FsWorkload *workload)
++        : PCEvent(q, "range entered", pc), endPc(end), workload(workload)
++    {}
++
++    void process(ThreadContext *tc) override;
++
++  private:
++    Addr endPc;
++    FsWorkload *workload;
++};
++
++void
++I386RangeEntry::process(ThreadContext *tc)
++{
++    workload->onRangeEntry(tc, endPc);
++}
++
++void
++FsWorkload::onRangeEntry(ThreadContext *tc, Addr endPc)
++{
++    if (linux011CountArmed)
++        return;
++    linux011CountArmed = true;
++    statistics::reset();
++    linux011TraceWindow(true);
++    armCountedExit(tc, endPc, "range returned");
++    inform("range entered, counters restarted, stop at %#x.\n", endPc);
++}
++
 +void
 +FsWorkload::onCopyPageEntry(ThreadContext *tc)
 +{
@@ -335,6 +409,7 @@ index c95754a..fd59347 100644
 +        return;
 +    linux011CountArmed = true;
 +    statistics::reset();
++    linux011TraceWindow(true);
 +    // f3 a5 is the rep movsl. The next instruction is two bytes later.
 +    // The exit fires when that instruction is about to run, so the
 +    // window is the copy.
@@ -448,6 +523,7 @@ index c95754a..fd59347 100644
 +    if (i386HaltPcEvent == nullptr)
 +        i386HaltPcEvent = new I386HaltExit(tc, haltAddr);
 +
++    linux011TraceWindow(true);
 +    inform("32-bit protected mode, paging off, PC=%#x (_gdt at %#x). "
 +           "setup_paging returns to hlt at %#x.\n",
 +           start, gdtBase, haltAddr);
@@ -534,6 +610,19 @@ index c95754a..fd59347 100644
 +               entry->address(), copyPagePc);
 +        return;
 +    }
++    if (count == "range") {
++        const Addr from = linux011HexArg(commandLine, "gem5_from=");
++        const Addr to = linux011HexArg(commandLine, "gem5_to=");
++        fatal_if(from == 0 || to == 0,
++                 "a range address is zero.");
++        fatal_if(from == to,
++                 "range start and end are the same address %#x.", from);
++        rangeEntryPcEvent = new I386RangeEntry(tc, from, to, this);
++        inform("32-bit protected mode at startup_32=%#x. "
++               "Counting from %#x until %#x.\n",
++               entry->address(), from, to);
++        return;
++    }
 +    fatal_if(count != "timer", "unknown gem5_count=%s.", count.c_str());
 +
 +    if (timerEntryPcEvent == nullptr) {
@@ -549,7 +638,7 @@ index c95754a..fd59347 100644
  void
  FsWorkload::initState()
  {
-@@ -174,8 +688,10 @@ FsWorkload::initState()
+@@ -174,8 +777,10 @@ FsWorkload::initState()
  
      fatal_if(!kernelObj, "No kernel to load.");
  
@@ -563,7 +652,7 @@ index c95754a..fd59347 100644
      ThreadContext *tc = system->threads[0];
      auto phys_proxy = system->physProxy;
 diff --git a/src/arch/x86/fs_workload.hh b/src/arch/x86/fs_workload.hh
-index f341fae..f4212b9 100644
+index f341fae..b6dfb55 100644
 --- a/src/arch/x86/fs_workload.hh
 +++ b/src/arch/x86/fs_workload.hh
 @@ -73,6 +73,12 @@ class ConfigTable;
@@ -579,7 +668,7 @@ index f341fae..f4212b9 100644
  class FsWorkload : public KernelWorkload
  {
    public:
-@@ -86,6 +92,30 @@ class FsWorkload : public KernelWorkload
+@@ -86,6 +92,33 @@ class FsWorkload : public KernelWorkload
          if (kernelOopsPcEvent != nullptr) {
              delete kernelOopsPcEvent;
          }
@@ -604,13 +693,16 @@ index f341fae..f4212b9 100644
 +        if (copyPageEntryPcEvent != nullptr) {
 +            delete copyPageEntryPcEvent;
 +        }
++        if (rangeEntryPcEvent != nullptr) {
++            delete rangeEntryPcEvent;
++        }
 +        if (countedExitPcEvent != nullptr) {
 +            delete countedExitPcEvent;
 +        }
      }
    public:
      void initState() override;
-@@ -120,8 +150,38 @@ class FsWorkload : public KernelWorkload
+@@ -120,8 +153,41 @@ class FsWorkload : public KernelWorkload
  
      PCEvent *kernelPanicPcEvent = nullptr;
      PCEvent *kernelOopsPcEvent = nullptr;
@@ -621,6 +713,7 @@ index f341fae..f4212b9 100644
 +    PCEvent *scheduleLjmpPcEvent = nullptr;
 +    PCEvent *scheduleRetPcEvent = nullptr;
 +    PCEvent *copyPageEntryPcEvent = nullptr;
++    PCEvent *rangeEntryPcEvent = nullptr;
 +    PCEvent *countedExitPcEvent = nullptr;
 +    bool linux011CountArmed = false;
 +    Addr copyPagePc = 0;
@@ -629,6 +722,7 @@ index f341fae..f4212b9 100644
 +    friend class I386ScheduleLjmp;
 +    friend class I386ScheduleRet;
 +    friend class I386CopyPageEntry;
++    friend class I386RangeEntry;
      void addExitOnKernelPanicEvent();
      void addExitOnKernelOopsEvent();
 +    // 32-bit protected mode, paging off, for an ELF32 kernel such as
@@ -642,6 +736,7 @@ index f341fae..f4212b9 100644
 +    void onScheduleLjmp(ThreadContext *tc);
 +    void onScheduleRet(ThreadContext *tc);
 +    void onCopyPageEntry(ThreadContext *tc);
++    void onRangeEntry(ThreadContext *tc, Addr endPc);
 +    void armCountedExit(ThreadContext *tc, Addr pc, const char *cause);
 +    std::string linux011Count() const;
 +    Addr findKernelBytes(Addr start, Addr len,
@@ -1073,6 +1168,195 @@ index bac174a..6ac8dd8 100644
                                         m5reg.cpl == 3, false);
  }
  
+diff --git a/src/cpu/o3/commit.cc b/src/cpu/o3/commit.cc
+index 405ea09..4241516 100644
+--- a/src/cpu/o3/commit.cc
++++ b/src/cpu/o3/commit.cc
+@@ -54,6 +54,7 @@
+ #include "cpu/o3/cpu.hh"
+ #include "cpu/o3/dyn_inst.hh"
+ #include "cpu/o3/limits.hh"
++#include "cpu/o3/linux011_window.hh"
+ #include "cpu/o3/thread_state.hh"
+ #include "cpu/timebuf.hh"
+ #include "debug/Activity.hh"
+@@ -72,6 +73,27 @@ namespace gem5
+ namespace o3
+ {
+ 
++namespace
++{
++
++bool linux011CommitStop = false;
++
++} // namespace
++
++void
++linux011StopCommit()
++{
++    linux011CommitStop = true;
++}
++
++bool
++linux011CommitStopped()
++{
++    return linux011CommitStop;
++}
++
++
++
+ // clang-format off
+ std::string Commit::CommitStats::statusStrings[ThreadStatusMax] = {
+     "running",
+@@ -1077,6 +1099,10 @@ Commit::commitInsts()
+                                 "PC skip function event, stopping commit\n");
+                         break;
+                     }
++                    // A Linux 0.11 window ends on this PC. The instruction
++                    // that just committed is the last one in the counter.
++                    if (linux011CommitStopped())
++                        break;
+                 }
+ 
+                 // Check if an instruction just enabled interrupts and we've
+@@ -1274,6 +1300,10 @@ Commit::commitHead(const DynInstPtr &head_inst, unsigned inst_num)
+     rob->retireHead(tid);
+ 
+     head_inst->commitTick = curTick() - head_inst->fetchTick;
++    // Record the pipeline line now. The last microop of a window is
++    // still referenced when the trace file closes, so its destructor
++    // would miss the file.
++    head_inst->dumpPipeView();
+ 
+     if (head_inst->traceData) {
+         head_inst->traceData->setFetchSeq(head_inst->seqNum);
+diff --git a/src/cpu/o3/dyn_inst.cc b/src/cpu/o3/dyn_inst.cc
+index 0f500d8..e2ac1dc 100644
+--- a/src/cpu/o3/dyn_inst.cc
++++ b/src/cpu/o3/dyn_inst.cc
+@@ -196,6 +196,43 @@ DynInst::operator delete(void *ptr)
+     ::operator delete(ptr);
+ }
+ 
++void
++DynInst::dumpPipeView()
++{
++#if TRACING_ON
++    if (pipeviewDumped || !debug::O3PipeView)
++        return;
++    Tick fetch = fetchTick;
++    // fetchTick can be -1 if the instruction fetched outside the trace
++    // window.
++    if (fetch == -1)
++        return;
++    pipeviewDumped = true;
++    Tick val;
++    DPRINTFR(O3PipeView, "O3PipeView:fetch:%llu:0x%08llx:%d:%llu:%s\n",
++             fetch,
++             pcState().instAddr(),
++             pcState().microPC(),
++             seqNum,
++             staticInst->disassemble(pcState().instAddr()));
++
++    val = (decodeTick == -1) ? 0 : fetch + decodeTick;
++    DPRINTFR(O3PipeView, "O3PipeView:decode:%llu\n", val);
++    val = (renameTick == -1) ? 0 : fetch + renameTick;
++    DPRINTFR(O3PipeView, "O3PipeView:rename:%llu\n", val);
++    val = (dispatchTick == -1) ? 0 : fetch + dispatchTick;
++    DPRINTFR(O3PipeView, "O3PipeView:dispatch:%llu\n", val);
++    val = (issueTick == -1) ? 0 : fetch + issueTick;
++    DPRINTFR(O3PipeView, "O3PipeView:issue:%llu\n", val);
++    val = (completeTick == -1) ? 0 : fetch + completeTick;
++    DPRINTFR(O3PipeView, "O3PipeView:complete:%llu\n", val);
++    val = (commitTick == -1) ? 0 : fetch + commitTick;
++
++    Tick valS = (storeTick == -1) ? 0 : fetch + storeTick;
++    DPRINTFR(O3PipeView, "O3PipeView:retire:%llu:store:%llu\n", val, valS);
++#endif
++}
++
+ DynInst::~DynInst()
+ {
+     /*
+@@ -217,39 +254,7 @@ DynInst::~DynInst()
+     for (int i = 0; i < ((_numSrcs + 7) / 8); i++)
+         _readySrcIdx[i].~uint8_t();
+ 
+-#if TRACING_ON
+-    if (debug::O3PipeView) {
+-        Tick fetch = fetchTick;
+-        // fetchTick can be -1 if the instruction fetched outside the trace
+-        // window.
+-        if (fetch != -1) {
+-            Tick val;
+-            // Print info needed by the pipeline activity viewer.
+-            DPRINTFR(O3PipeView, "O3PipeView:fetch:%llu:0x%08llx:%d:%llu:%s\n",
+-                     fetch,
+-                     pcState().instAddr(),
+-                     pcState().microPC(),
+-                     seqNum,
+-                     staticInst->disassemble(pcState().instAddr()));
+-
+-            val = (decodeTick == -1) ? 0 : fetch + decodeTick;
+-            DPRINTFR(O3PipeView, "O3PipeView:decode:%llu\n", val);
+-            val = (renameTick == -1) ? 0 : fetch + renameTick;
+-            DPRINTFR(O3PipeView, "O3PipeView:rename:%llu\n", val);
+-            val = (dispatchTick == -1) ? 0 : fetch + dispatchTick;
+-            DPRINTFR(O3PipeView, "O3PipeView:dispatch:%llu\n", val);
+-            val = (issueTick == -1) ? 0 : fetch + issueTick;
+-            DPRINTFR(O3PipeView, "O3PipeView:issue:%llu\n", val);
+-            val = (completeTick == -1) ? 0 : fetch + completeTick;
+-            DPRINTFR(O3PipeView, "O3PipeView:complete:%llu\n", val);
+-            val = (commitTick == -1) ? 0 : fetch + commitTick;
+-
+-            Tick valS = (storeTick == -1) ? 0 : fetch + storeTick;
+-            DPRINTFR(O3PipeView, "O3PipeView:retire:%llu:store:%llu\n",
+-                    val, valS);
+-        }
+-    }
+-#endif
++    dumpPipeView();
+ 
+     delete [] memData;
+     delete traceData;
+diff --git a/src/cpu/o3/dyn_inst.hh b/src/cpu/o3/dyn_inst.hh
+index f0c14fb..9bc04ad 100644
+--- a/src/cpu/o3/dyn_inst.hh
++++ b/src/cpu/o3/dyn_inst.hh
+@@ -1017,6 +1017,9 @@ class DynInst : public ExecContext, public RefCounted
+     // Value -1 indicates that particular phase
+     // hasn't happened (yet).
+     /** Tick records used for the pipeline activity viewer. */
++    bool pipeviewDumped = false;
++    void dumpPipeView();
++
+     Tick fetchTick = -1;      // instruction fetch is completed.
+     int32_t decodeTick = -1;  // instruction enters decode phase
+     int32_t renameTick = -1;  // instruction enters rename phase
+diff --git a/src/cpu/o3/linux011_window.hh b/src/cpu/o3/linux011_window.hh
+new file mode 100644
+index 0000000..a3caea3
+--- /dev/null
++++ b/src/cpu/o3/linux011_window.hh
+@@ -0,0 +1,18 @@
++#ifndef __CPU_O3_LINUX011_WINDOW_HH__
++#define __CPU_O3_LINUX011_WINDOW_HH__
++
++namespace gem5
++{
++namespace o3
++{
++
++// The Linux 0.11 measurement window ends at a PC event, which runs
++// from inside commit. Stop that commit loop so the next instruction
++// is not counted.
++void linux011StopCommit();
++bool linux011CommitStopped();
++
++} // namespace o3
++} // namespace gem5
++
++#endif
 diff --git a/src/dev/x86/i8259.cc b/src/dev/x86/i8259.cc
 index 9596eee..f79f945 100644
 --- a/src/dev/x86/i8259.cc

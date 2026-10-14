@@ -12,7 +12,7 @@ Pressing F5 still debugs the QEMU machine and stops on the first instruction of 
 
 `labs/i386/bochs/bochsrc` is a 16MB PC. The floppy is `Image`. The hard disk is `rootfs/hdc-0.11.img`, 410 cylinders, 16 heads, 38 sectors, which is the size of that file. There is no network device.
 
-The CPU model is `pentium`. That is the oldest named model in Bochs 2.8, and it still runs the 386 protected-mode instructions this kernel uses. `ips=1000000` makes the floppy's emulated delays finish after fewer instructions, so the boot reaches the debugger in a few seconds. The BIOS is `/usr/share/bochs/BIOS-bochs-legacy`.
+The CPU model is `pentium`. That is the oldest named model in Bochs 2.8, and it still runs the 386 protected-mode instructions this kernel uses. `ips=1000000` and `clock: sync=none` make a floppy delay expire after fewer instructions. `vga: realtime=0` keeps the VGA timer on that same clock. The default realtime VGA timer sleeps on the host clock whenever the guest executes `hlt`. The BIOS is `/usr/share/bochs/BIOS-bochs-legacy`.
 
 ## How to check
 

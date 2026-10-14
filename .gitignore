@@ -31,9 +31,10 @@ rootfs/hdc-0.11.img
 # Empty-directory placeholders. Git does not store empty directories.
 **/.gitkeep
 
-# Later simulator output
+# gem5 run output. launch.sh writes labs/i386/gem5/m5out/.
 m5out/
 *.log
+__pycache__/
 
 # gem5 source and build. labs/i386/gem5/build.sh clones the pinned release here.
 .gem5/

@@ -35,9 +35,19 @@ parser.add_argument(
 )
 parser.add_argument(
     "--count",
-    choices=("timer", "schedule", "copy_page"),
+    choices=("timer", "schedule", "copy_page", "range"),
     default="timer",
     help="Kernel path to count after startup_32.",
+)
+parser.add_argument(
+    "--range-from",
+    default="",
+    help="Start address for --count range. Hex, with or without 0x.",
+)
+parser.add_argument(
+    "--range-to",
+    default="",
+    help="End address for --count range. The instruction at this PC is outside the window.",
 )
 args = parser.parse_args()
 
@@ -80,9 +90,15 @@ MemConfig.config_mem(args, test_sys)
 if args.timer_interrupt:
     # setup.s has already run on a real boot. Linux 0.11 arms the 8259,
     # not the I/O APIC, and the PIT's IRQ0 is the timer.
-    test_sys.workload.command_line = (
-        "gem5_boot=startup_32 gem5_count=%s" % args.count
-    )
+    command = "gem5_boot=startup_32 gem5_count=%s" % args.count
+    if args.count == "range":
+        if not args.range_from or not args.range_to:
+            fatal("range needs --range-from and --range-to.")
+        command += " gem5_from=%s gem5_to=%s" % (
+            args.range_from,
+            args.range_to,
+        )
+    test_sys.workload.command_line = command
     bridge = test_sys.pc.south_bridge
     # attachIO already ties the PIT to pic1 IRQ0. pic1.output is a
     # source pin, so this adds the CPU's LINT0 beside the I/O APIC.

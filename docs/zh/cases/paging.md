@@ -44,13 +44,26 @@ gem5 这一次打印过：
 
 ```text
 setup_paging at 0x5450
-cycles                 36047   system.cpu.numCycles
-instructions           12307   system.cpu.commitStats0.numInsts
-microops               65577   system.cpu.commitStats0.numOps
-L1 I misses               12   system.cpu.icache.overallMisses::total
-L1 D misses              322   system.cpu.dcache.overallMisses::total
-store-queue stalls     23832   system.cpu.rename.SQFullEvents
-serialize stalls         172   system.cpu.rename.status::SerializeStall
+cycles                     36047   system.cpu.numCycles
+instructions               12307   system.cpu.commitStats0.numInsts
+microops                   65577   system.cpu.commitStats0.numOps
+cpi                     2.928984   system.cpu.cpi
+loads                          1   system.cpu.commitStats0.numLoadInsts
+stores                      9220   system.cpu.commitStats0.numStoreInsts
+L1 I accesses                 56   system.cpu.icache.overallAccesses::total
+L1 I miss rate          0.214286   system.cpu.icache.overallMissRate::total
+L1 I misses                   12   system.cpu.icache.overallMisses::total
+L1 D accesses               9223   system.cpu.dcache.overallAccesses::total
+L1 D miss rate          0.034913   system.cpu.dcache.overallMissRate::total
+L1 D misses                  322   system.cpu.dcache.overallMisses::total
+L1 D miss cycles           56.11   system.cpu.dcache.overallAvgMissLatency::total
+branches                    9217   system.cpu.branchPred.committed_0::total
+branch mispredicts           26   system.cpu.branchPred.mispredicted_0::total
+store-queue stalls         23832   system.cpu.rename.SQFullEvents
+issue-queue stalls             4   system.cpu.rename.IQFullEvents
+serialize stalls             172   system.cpu.rename.status::SerializeStall
 ```
 
-322 次数据 miss 里，320 次是写，对应那 20KiB；另外 2 次是读。store queue 停顿是这个循环的流水线停顿：`stosl` 填队列比内存排空更快。你刚跑的那一次，以脚本打出的数字为准。
+CPI 是 2.93，来自 9220 次 store 和 1 次 load。322 次数据 miss 里，320 次是写，对应那 20KiB；另外 2 次是读。未命中率是 0.035，一次数据未命中平均 56.11 个周期。store queue 停顿是这个循环的流水线停顿：`stosl` 填队列比内存排空更快。issue queue 停顿是 4。你刚跑的那一次，以脚本打出的数字为准。
+
+同一次运行写出 `m5out/instructions.txt`、`m5out/pipeline.txt` 和 `m5out/pipeline.html`。填表是同一段循环重复很多次，所以文件只留前 32 条微操作和最后 12 条。这一次是 65577 条里的 44 条，末尾是写 CR3、写 CR0，然后返回。65577 和 `microops` 是同一个数。

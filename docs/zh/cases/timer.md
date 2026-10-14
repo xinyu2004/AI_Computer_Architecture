@@ -46,13 +46,34 @@ gem5 这一次打印过：
 
 ```text
 _timer_interrupt at 0x6ee4
-cycles                   866   system.cpu.numCycles
-instructions              57   system.cpu.commitStats0.numInsts
-microops                 211   system.cpu.commitStats0.numOps
-L1 I misses                3   system.cpu.icache.overallMisses::total
-L1 D misses               19   system.cpu.dcache.overallMisses::total
-store-queue stalls         0   system.cpu.rename.SQFullEvents
-serialize stalls         284   system.cpu.rename.status::SerializeStall
+cycles                       866   system.cpu.numCycles
+instructions                  57   system.cpu.commitStats0.numInsts
+microops                     211   system.cpu.commitStats0.numOps
+cpi                    15.192982   system.cpu.cpi
+loads                         32   system.cpu.commitStats0.numLoadInsts
+stores                        14   system.cpu.commitStats0.numStoreInsts
+L1 I accesses                 67   system.cpu.icache.overallAccesses::total
+L1 I miss rate          0.044776   system.cpu.icache.overallMissRate::total
+L1 I misses                    3   system.cpu.icache.overallMisses::total
+L1 D accesses                112   system.cpu.dcache.overallAccesses::total
+L1 D miss rate          0.169643   system.cpu.dcache.overallMissRate::total
+L1 D misses                   19   system.cpu.dcache.overallMisses::total
+L1 D miss cycles           51.68   system.cpu.dcache.overallAvgMissLatency::total
+branches                      32   system.cpu.branchPred.committed_0::total
+branch mispredicts           16   system.cpu.branchPred.mispredicted_0::total
+store-queue stalls             0   system.cpu.rename.SQFullEvents
+issue-queue stalls             6   system.cpu.rename.IQFullEvents
+serialize stalls             284   system.cpu.rename.status::SerializeStall
 ```
 
-返回地址是 `0x7a06`，即 `_panic` 里的 `jmp`。store queue 没有被填满。流水线停顿是 serialize stall。结束行是 `timer_interrupt returned`。能进 shell 的仍是 QEMU 和 Bochs。
+返回地址是 `0x7a06`，即 `_panic` 里的 `jmp`。CPI 是 15.2。处理函数提交了 32 次 load 和 14 次 store，32 次分支里有 16 次预测错。store queue 没有被填满。流水线停顿是 serialize stall。issue queue 停顿是 6。结束行是 `timer_interrupt returned`。能进 shell 的仍是 QEMU 和 Bochs。
+
+同一次运行把整个处理函数写进 `m5out/instructions.txt`、`m5out/pipeline.txt` 和 `m5out/pipeline.html`，从 `push %ds` 一直到 `iret`。指令文件的开头是：
+
+```text
+0x00006ee4.0   PUSH_S : rdsel   t1d, DS
+0x00006ee4.1   PUSH_S : st   t1d, SS:[t0d + esp + 0xfffffffffffffffc]
+0x00006ee4.2   PUSH_S : subi   esp, esp, 0x4
+```
+
+流水线每一行怎么读，见 [gem5](../gem5.md)。
