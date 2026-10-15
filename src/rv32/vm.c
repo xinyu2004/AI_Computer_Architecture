@@ -37,6 +37,8 @@ static uint32_t leaf[NLEAF][1024] __attribute__((aligned(4096)));
 static int nleaf;
 static uint8_t user_pages[USER_CODE_PAGES][4096] __attribute__((aligned(4096)));
 static uint8_t user_stack[4096] __attribute__((aligned(4096)));
+static uint8_t saved_code[USER_CODE_PAGES][4096];
+static uint8_t *active_stack;
 
 static uint32_t *leaf_for(uint32_t vpn1)
 {
@@ -109,6 +111,7 @@ void vm_map_user(void)
 		if (map_page(va, pa, flags) != 0)
 			poweroff();
 	}
+	active_stack = user_stack;
 	if (map_page(USER_STACK_VA, (uint32_t)user_stack, stack) != 0)
 		poweroff();
 	asm volatile("sfence.vma" ::: "memory");
@@ -117,15 +120,39 @@ void vm_map_user(void)
 void vm_user_clear(void)
 {
 	memset(user_pages, 0, sizeof user_pages);
-	memset(user_stack, 0, sizeof user_stack);
+}
+
+void vm_save_code(void)
+{
+	memcpy(saved_code, user_pages, sizeof user_pages);
+}
+
+void vm_restore_code(void)
+{
+	memcpy(user_pages, saved_code, sizeof user_pages);
+}
+
+void vm_set_stack(void *page)
+{
+	uint32_t stack = PTE_V | PTE_R | PTE_W | PTE_U | PTE_A | PTE_D;
+
+	active_stack = page;
+	if (map_page(USER_STACK_VA, (uint32_t)page, stack) != 0)
+		poweroff();
+	asm volatile("sfence.vma" ::: "memory");
+}
+
+void vm_use_shell_stack(void)
+{
+	vm_set_stack(user_stack);
 }
 
 uint32_t vm_user_pa(uint32_t va)
 {
 	if (va >= USER_BASE && va < USER_BASE + USER_CODE_PAGES * 4096u)
 		return (uint32_t)user_pages[(va - USER_BASE) >> 12] + (va & 0xfffu);
-	if (va >= USER_STACK_VA && va < USER_STACK_TOP)
-		return (uint32_t)user_stack + (va & 0xfffu);
+	if (va >= USER_STACK_VA && va < USER_STACK_TOP && active_stack != 0)
+		return (uint32_t)active_stack + (va & 0xfffu);
 	return 0;
 }
 

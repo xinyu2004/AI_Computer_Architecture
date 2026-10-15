@@ -21,8 +21,17 @@ void uart_init(uint32_t base)
 
 int uart_getc(void)
 {
-	while ((uart[LSR] & LSR_DR) == 0)
-		;
+	uint32_t sie = 1u << 1;
+
+	/* The prompt blocks here. Leave SIE on and wake from the timer
+	 * so a tick still arrives while nobody is typing. The 16550
+	 * receive bit is not an interrupt in this kernel; the next tick
+	 * polls the line status again.
+	 */
+	while ((uart[LSR] & LSR_DR) == 0) {
+		asm volatile("csrs sstatus, %0" :: "r"(sie));
+		asm volatile("wfi");
+	}
 	return uart[0];
 }
 

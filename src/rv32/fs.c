@@ -91,6 +91,11 @@ int fs_read(const char *name, void *dst, uint32_t cap, uint32_t *out_len)
 	return 0;
 }
 
+int fs_exists(const char *name)
+{
+	return lookup(name) >= 0;
+}
+
 int fs_list(char *dst, uint32_t cap)
 {
 	uint32_t used = 0;

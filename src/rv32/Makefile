@@ -15,24 +15,24 @@ OBJS := entry.o swtch.o trap.o power.o uart.o fdt.o vm.o traps.o mem.o \
 
 .PHONY: all clean
 
-all: kernel.elf user/sh.elf user/ls.elf
+USER := ../user
+URV := ../riscv
+.SECONDARY: $(USER)/sh.o $(USER)/ls.o $(USER)/echo.o $(USER)/sleep.o
+
+all: kernel.elf $(USER)/sh.elf $(USER)/ls.elf $(USER)/echo.elf $(USER)/sleep.elf
 
 kernel.elf: $(OBJS) kernel.ld
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS) -lgcc
 
-user/entry.o: user/entry.S
+$(URV)/entry.o: $(URV)/entry.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-user/sh.elf: user/entry.o user/sh.o user/user.ld
-	$(CC) $(CFLAGS) -o $@ user/entry.o user/sh.o -nostdlib -static \
-		-T user/user.ld -Wl,--no-relax
+$(USER)/%.elf: $(URV)/entry.o $(USER)/%.o $(URV)/user.ld
+	$(CC) $(CFLAGS) -o $@ $(URV)/entry.o $(USER)/$*.o -nostdlib -static \
+		-T $(URV)/user.ld -Wl,--no-relax
 
-user/ls.elf: user/entry.o user/ls.o user/user.ld
-	$(CC) $(CFLAGS) -o $@ user/entry.o user/ls.o -nostdlib -static \
-		-T user/user.ld -Wl,--no-relax
-
-user/%.o: user/%.c user/user.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+$(USER)/%.o: $(USER)/%.c $(URV)/user.h
+	$(CC) $(CFLAGS) -I$(URV) -c -o $@ $<
 
 entry.o: entry.S
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -47,5 +47,6 @@ trap.o: trap.S
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJS) kernel.elf user/entry.o user/sh.o user/ls.o \
-		user/sh.elf user/ls.elf
+	rm -f $(OBJS) kernel.elf $(URV)/entry.o \
+		$(USER)/sh.o $(USER)/ls.o $(USER)/echo.o $(USER)/sleep.o \
+		$(USER)/sh.elf $(USER)/ls.elf $(USER)/echo.elf $(USER)/sleep.elf

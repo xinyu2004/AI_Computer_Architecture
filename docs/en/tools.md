@@ -48,6 +48,6 @@ gem5 itself is not an apt package. `labs/i386/gem5/build.sh` clones the pinned r
 
 `gcc-riscv64-unknown-elf` provides `riscv64-unknown-elf-gcc`. The same compiler has a 32-bit multilib. `make -C src/rv32` uses `-march=rv32gc -mabi=ilp32`, so the objects are RV32 even though the command name says riscv64.
 
-`qemu-system-riscv` provides `qemu-system-riscv32`. `labs/rv32/qemu/launch.sh` starts that emulator with `-machine virt -cpu rv32` and leaves the UART at a shell. `help` at that prompt lists the commands. On a Debian or Ubuntu archive that still ships this binary inside `qemu-system-misc`, `script/bootstrap.sh` installs that package instead. [What the RV32 kernel does](rv32.md).
+`qemu-system-riscv` provides `qemu-system-riscv32`. `labs/rv32/qemu/launch.sh` starts that emulator with `-machine virt -cpu rv32` and leaves the UART at a shell. `help` at that prompt lists the programs on the disk. On a Debian or Ubuntu archive that still ships this binary inside `qemu-system-misc`, `script/bootstrap.sh` installs that package instead. [What the RV32 kernel does](rv32.md).
 
 `gdb-multiarch` is the debugger for that kernel. Press F5 and choose **RV32**. It stops at `_start` in `src/rv32/entry.S`, the kernel's first instruction. The UART output is in the terminal of that task. Both debug sessions listen on `127.0.0.1:1234`. Start one at a time. `labs/rv32/qemu/launch.sh` by itself still boots to the shell.

@@ -13,11 +13,11 @@ A smaller parenthetical mark sits in the first column. (RV32) is a mechanism of 
 | Instruction | Name | Effect |
 | --- | --- | --- |
 | `mret` <sub>(RV32)</sub> | Machine return | Jump to `mepc` and enter the mode named by `mstatus.MPP`. `_start` uses it to enter S-mode. |
-| `ecall` <sub>(RV32)</sub> | Environment call | Trap to the next more privileged mode. A user program uses it to enter the kernel. `a7` selects read, write, exec, exit, list, or one of timer, schedule, and copy_page. |
+| `ecall` <sub>(RV32)</sub> | Environment call | Trap to the next more privileged mode. A user program uses it to enter the kernel. `a7` selects exit, write, read, exec, list, fork, wait, sleep, or lookup by name. |
 | `sret` <sub>(RV32)</sub> | Supervisor return | Jump to `sepc` and copy `SPIE` back into `SIE`. This is how a trap handler returns. |
 | `sfence.vma` | Supervisor fence, virtual memory | Drop translations the CPU has cached. It runs before and after the write to `satp`. |
 | `csrr` / `csrw` | CSR read / CSR write | Move a value between a register and a control register. M-mode uses `pmpaddr0`, `pmpcfg0`, `medeleg`, `mideleg`, `mstatus`, `mepc`, `mcounteren`, and `menvcfgh`. S-mode uses `satp`, `stvec`, `sepc`, `scause`, `sie`, `sstatus`, `sscratch`, `time`, `timeh`, `stimecmp`, and `stimecmph`. |
-| `wfi` | Wait for interrupt | Pause until an interrupt is pending. The timer job uses it to wait for one tick. |
+| `wfi` | Wait for interrupt | Pause until an interrupt is pending. The shell uses it while waiting for a line, and `sleep` uses it while waiting out the milliseconds. The next timer tick is what resumes them. |
 
 ## Bits named above
 

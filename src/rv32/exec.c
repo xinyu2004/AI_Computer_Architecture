@@ -1,9 +1,10 @@
 #include "rv32.h"
 
 /*
- * One user process. sh is loaded from the disk and entered in U-mode.
- * exec replaces that image. exit from any program other than sh loads
- * sh again. exit from sh shuts the machine down.
+ * sh is loaded from the disk and entered in U-mode. It stays there.
+ * fork copies the shell's stack page. exec loads another program and
+ * swtch enters it. exit swtch's back and the saved shell pages are
+ * restored, so sh is not read from the disk again.
  *
  * The console is the UART. read waits for a line and echoes it.
  * There is no separate tty driver.
@@ -14,11 +15,23 @@
 #define SYS_READ 2u
 #define SYS_EXEC 3u
 #define SYS_LIST 4u
-#define SYS_RUN 5u
+#define SYS_FORK 5u
+#define SYS_WAIT 6u
+#define SYS_SLEEP 7u
+#define SYS_LOOKUP 8u
 
-#define JOB_TIMER 1u
-#define JOB_SCHEDULE 2u
-#define JOB_COPY 3u
+char current_name[28] = "sh";
+
+static int have_child;
+static int child_exited;
+static int child_status;
+static int in_child;
+static uint8_t filebuf[16 * 1024];
+static uint8_t child_stack[4096] __attribute__((aligned(4096)));
+static uint8_t child_kstack[4096] __attribute__((aligned(16)));
+static struct context shell_ctx;
+static struct context child_ctx;
+static struct trapframe saved_parent;
 
 struct elf32_ehdr {
 	uint8_t ident[16];
@@ -47,9 +60,6 @@ struct elf32_phdr {
 	uint32_t flags;
 	uint32_t align;
 };
-
-static int is_shell;
-static uint8_t filebuf[16 * 1024];
 
 static int copy_out(uint32_t va, const void *src, uint32_t len)
 {
@@ -128,25 +138,7 @@ static int elf_load(const char *name, uint32_t *entry)
 		}
 	}
 	*entry = eh.entry;
-	return 0;
-}
-
-static void resume(struct trapframe *tf, uint32_t entry)
-{
-	tf->sepc = entry;
-	tf->x[2] = USER_STACK_TOP;
-	tf->x[1] = 0;
-	tf->x[10] = 0;
-}
-
-static int load_into(struct trapframe *tf, const char *name, int shell)
-{
-	uint32_t entry;
-
-	if (elf_load(name, &entry) != 0)
-		return -1;
-	is_shell = shell;
-	resume(tf, entry);
+	asm volatile("fence.i" ::: "memory");
 	return 0;
 }
 
@@ -170,8 +162,141 @@ void shell_start(const struct fdt_info *fdt)
 		uart_puts("no sh\n");
 		poweroff();
 	}
-	is_shell = 1;
+	timer_arm(fdt->timebase);
 	user_enter(entry, USER_STACK_TOP);
+}
+
+static void set_name(const char *s)
+{
+	uint32_t i;
+
+	for (i = 0; i + 1u < sizeof current_name && s[i] != '\0'; i++)
+		current_name[i] = s[i];
+	current_name[i] = '\0';
+}
+
+static void child_start(void)
+{
+	user_resume();
+}
+
+static uint32_t push_str(uint32_t sp, const char *s, uint32_t *at)
+{
+	uint32_t n = 0;
+
+	while (s[n] != '\0')
+		n++;
+	n++;
+	sp -= n;
+	if (copy_out(sp, s, n) != 0)
+		return 0;
+	*at = sp;
+	return sp;
+}
+
+static int write_u32(uint32_t va, uint32_t value)
+{
+	return copy_out(va, &value, 4);
+}
+
+static int place_args(const char *name, const char *arg, uint32_t *argc,
+		      uint32_t *argv, uint32_t *sp_out)
+{
+	uint32_t sp = USER_STACK_TOP;
+	uint32_t s0;
+	uint32_t s1 = 0;
+	uint32_t nargc = 1;
+
+	sp = push_str(sp, name, &s0);
+	if (sp == 0)
+		return -1;
+	if (arg[0] != '\0') {
+		sp = push_str(sp, arg, &s1);
+		if (sp == 0)
+			return -1;
+		nargc = 2;
+	}
+	sp &= ~3u;
+	sp -= (nargc + 1u) * 4u;
+	if (sp < 0x80000u)
+		return -1;
+	if (write_u32(sp, s0) != 0)
+		return -1;
+	if (nargc == 2 && write_u32(sp + 4u, s1) != 0)
+		return -1;
+	if (write_u32(sp + nargc * 4u, 0) != 0)
+		return -1;
+	*argc = nargc;
+	*argv = sp;
+	*sp_out = sp;
+	return 0;
+}
+
+static void fill_child_frame(struct trapframe *tf, uint32_t entry, uint32_t sp,
+			     uint32_t argc, uint32_t argv)
+{
+	uint32_t sstatus;
+	uint32_t i;
+
+	for (i = 0; i < 32; i++)
+		tf->x[i] = 0;
+	tf->x[2] = sp;
+	tf->x[10] = argc;
+	tf->x[11] = argv;
+	tf->sepc = entry;
+	tf->kernel_sp = (uint32_t)child_kstack + sizeof child_kstack;
+	asm volatile("csrr %0, sstatus" : "=r"(sstatus));
+	sstatus &= ~(1u << 8);
+	sstatus |= (1u << 5) | (1u << 18);
+	tf->sstatus = sstatus;
+}
+
+static int sys_fork(void)
+{
+	if (have_child)
+		return -1;
+	copy_page((uint32_t *)child_stack, (uint32_t *)vm_user_pa(0x80000u));
+	vm_save_code();
+	have_child = 1;
+	return 1;
+}
+
+static int sys_exec(struct trapframe *parent, const char *name, const char *arg)
+{
+	uint32_t entry;
+	uint32_t argc;
+	uint32_t argv;
+	uint32_t sp;
+
+	if (!have_child)
+		return -1;
+	if (elf_load(name, &entry) != 0) {
+		vm_restore_code();
+		have_child = 0;
+		return -1;
+	}
+	memcpy(&saved_parent, parent, sizeof saved_parent);
+	vm_set_stack(child_stack);
+	if (place_args(name, arg, &argc, &argv, &sp) != 0) {
+		vm_use_shell_stack();
+		vm_restore_code();
+		have_child = 0;
+		return -1;
+	}
+	fill_child_frame(parent, entry, sp, argc, argv);
+	set_name(name);
+	child_ctx.ra = (uint32_t)child_start;
+	child_ctx.sp = (uint32_t)child_kstack + sizeof child_kstack;
+	in_child = 1;
+	swtch(&shell_ctx, &child_ctx);
+	in_child = 0;
+	vm_use_shell_stack();
+	vm_restore_code();
+	asm volatile("fence.i" ::: "memory");
+	have_child = 0;
+	set_name("sh");
+	memcpy(parent, &saved_parent, sizeof saved_parent);
+	return 0;
 }
 
 static int sys_write(uint32_t va, uint32_t len)
@@ -234,10 +359,11 @@ void syscall(struct trapframe *tf)
 	int ret = -1;
 
 	if (n == SYS_EXIT) {
-		if (is_shell)
+		if (!in_child)
 			poweroff();
-		if (load_into(tf, "sh", 1) != 0)
-			poweroff();
+		child_status = (int)a0;
+		child_exited = 1;
+		swtch(&child_ctx, &shell_ctx);
 		return;
 	}
 	if (n == SYS_WRITE && a0 == 1)
@@ -246,10 +372,11 @@ void syscall(struct trapframe *tf)
 		ret = sys_read(a1, a2);
 	else if (n == SYS_EXEC) {
 		char path[28];
+		char arg[64];
 
 		if (copy_str(a0, path, sizeof path) == 0 &&
-		    load_into(tf, path, 0) == 0)
-			return;
+		    copy_str(a1, arg, sizeof arg) == 0)
+			ret = sys_exec(tf, path, arg);
 	} else if (n == SYS_LIST) {
 		char list[256];
 		int len = fs_list(list, sizeof list);
@@ -257,19 +384,21 @@ void syscall(struct trapframe *tf)
 		if (len >= 0 && (uint32_t)len <= a1 &&
 		    copy_out(a0, list, (uint32_t)len) == 0)
 			ret = len;
-	} else if (n == SYS_RUN) {
-		if (a0 == JOB_TIMER)
-			run_timer();
-		else if (a0 == JOB_SCHEDULE)
-			run_schedule();
-		else if (a0 == JOB_COPY)
-			run_copy();
-		else {
-			tf->x[10] = (uint32_t)-1;
-			tf->sepc += 4;
-			return;
+	} else if (n == SYS_FORK) {
+		ret = sys_fork();
+	} else if (n == SYS_WAIT) {
+		if (child_exited) {
+			ret = child_status;
+			child_exited = 0;
 		}
+	} else if (n == SYS_SLEEP) {
+		sleep_ms(a0);
 		ret = 0;
+	} else if (n == SYS_LOOKUP) {
+		char path[28];
+
+		if (copy_str(a0, path, sizeof path) == 0)
+			ret = fs_exists(path) ? 0 : -1;
 	}
 	tf->x[10] = (uint32_t)ret;
 	tf->sepc += 4;

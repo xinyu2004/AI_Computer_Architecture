@@ -54,6 +54,10 @@ void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio,
 void vm_on(void);
 void vm_map_user(void);
 void vm_user_clear(void);
+void vm_save_code(void);
+void vm_restore_code(void);
+void vm_set_stack(void *page);
+void vm_use_shell_stack(void);
 uint32_t vm_user_pa(uint32_t va);
 
 void swtch(struct context *old, struct context *next);
@@ -65,13 +69,14 @@ int virtio_read(uint32_t sector, void *dst);
 int fs_init(void);
 int fs_read(const char *name, void *dst, uint32_t cap, uint32_t *out_len);
 int fs_list(char *dst, uint32_t cap);
+int fs_exists(const char *name);
 
 void trap_init(void);
 void timer_arm(uint32_t timebase);
-void timer_wait(void);
-void run_timer(void);
-void run_schedule(void);
-void run_copy(void);
+void sleep_ms(uint32_t ms);
+void copy_page(uint32_t *dst, const uint32_t *src);
+
+extern char current_name[28];
 
 struct trapframe {
 	uint32_t x[32];
@@ -81,6 +86,7 @@ struct trapframe {
 };
 
 void user_enter(uint32_t entry, uint32_t user_sp);
+void user_resume(void);
 void syscall(struct trapframe *tf);
 void shell_start(const struct fdt_info *fdt);
 

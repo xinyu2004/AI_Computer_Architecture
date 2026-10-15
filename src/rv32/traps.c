@@ -3,13 +3,15 @@
 /*
  * Supervisor timer interrupt: scause has the high bit set and the low
  * bits equal 5. stimecmp is the Sstc compare register. The handler
- * moves the next deadline to the end of the time register, so each
- * timer command takes one tick.
+ * moves the next deadline one interval ahead. The interval is
+ * timebase/100, 10ms when the timebase is 10MHz. The prompt leaves
+ * the interrupt enabled, so ticks continue while the shell waits.
  */
 
 extern void trap_entry(void);
 
-static volatile int timer_fired;
+static uint32_t timer_interval;
+static uint32_t ticks_per_ms;
 
 static void set_timer(uint64_t when)
 {
@@ -50,8 +52,7 @@ void trap_handler(struct trapframe *tf)
 
 	asm volatile("csrr %0, scause" : "=r"(cause));
 	if (cause == 0x80000005u) {
-		timer_fired = 1;
-		set_timer(~(uint64_t)0);
+		set_timer(rdtime() + timer_interval);
 		return;
 	}
 	if (cause == 8u) {
@@ -71,17 +72,24 @@ void timer_arm(uint32_t timebase)
 	uint32_t stie = 1u << 5;
 	uint32_t sie = 1u << 1;
 
-	timer_fired = 0;
-	set_timer(rdtime() + (uint64_t)timebase / 100u);
+	timer_interval = timebase / 100u;
+	ticks_per_ms = timebase / 1000u;
+	if (timer_interval == 0)
+		timer_interval = 1;
+	if (ticks_per_ms == 0)
+		ticks_per_ms = 1;
+	set_timer(rdtime() + timer_interval);
 	asm volatile("csrs sie, %0" :: "r"(stie));
 	asm volatile("csrs sstatus, %0" :: "r"(sie));
 }
 
-void timer_wait(void)
+void sleep_ms(uint32_t ms)
 {
+	uint64_t deadline = rdtime() + (uint64_t)ms * ticks_per_ms;
 	uint32_t sie = 1u << 1;
 
-	while (!timer_fired)
+	while (rdtime() < deadline) {
+		asm volatile("csrs sstatus, %0" :: "r"(sie));
 		asm volatile("wfi");
-	asm volatile("csrc sstatus, %0" :: "r"(sie));
+	}
 }

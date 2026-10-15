@@ -27,9 +27,9 @@ static inline int sys_read(int fd, void *buf, int len)
 	return syscall(2, fd, (int)buf, len);
 }
 
-static inline int sys_exec(const char *path)
+static inline int sys_exec(const char *path, const char *arg)
 {
-	return syscall(3, (int)path, 0, 0);
+	return syscall(3, (int)path, (int)arg, 0);
 }
 
 static inline int sys_list(void *buf, int cap)
@@ -37,9 +37,24 @@ static inline int sys_list(void *buf, int cap)
 	return syscall(4, (int)buf, cap, 0);
 }
 
-static inline int sys_run(int job)
+static inline int sys_fork(void)
 {
-	return syscall(5, job, 0, 0);
+	return syscall(5, 0, 0, 0);
+}
+
+static inline int sys_wait(void)
+{
+	return syscall(6, 0, 0, 0);
+}
+
+static inline int sys_sleep(int ms)
+{
+	return syscall(7, ms, 0, 0);
+}
+
+static inline int sys_lookup(const char *path)
+{
+	return syscall(8, (int)path, 0, 0);
 }
 
 #endif

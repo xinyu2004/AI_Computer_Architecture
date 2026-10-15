@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Build the RV32 root image the kernel mounts.
-#   mkimage.py images/rv32.img ls src/rv32/user/ls.elf sh src/rv32/user/sh.elf
+#   mkimage.py images/rv32.img ls src/user/ls.elf sh src/user/sh.elf
 # Sector 0: magic V2SF and the file count. Sector 1: directory entries
 # of 28-byte name, offset, length. Each file starts on a sector boundary.
 

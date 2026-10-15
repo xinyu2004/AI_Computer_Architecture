@@ -18,11 +18,11 @@ core
 
 # RV32 kernel and user programs. labs/rv32/qemu/launch.sh builds them.
 src/rv32/kernel.elf
-src/rv32/user/*.elf
+src/user/*.elf
 # cpp output of keyboard.S; the source is keyboard.S
 **/kernel/chr_drv/keyboard.s
 
-# Teaching disk used by QEMU. Not built from this tree yet; see docs/en/backlog.md.
+# Teaching disk used by QEMU. It stays a download and is not generated in this tree.
 rootfs/hdc-0.11.img
 
 # Generated boot images in this repository

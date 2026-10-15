@@ -13,11 +13,11 @@
 | 指令 | 全称 | 效果 |
 | --- | --- | --- |
 | `mret` <sub>(RV32)</sub> | Machine return，机器模式返回 | 跳到 `mepc`，并进入 `mstatus.MPP` 指定的模式。`_start` 用它进入 S-mode。 |
-| `ecall` <sub>(RV32)</sub> | Environment call，环境调用 | 陷入更高一级的特权模式。用户程序用它进入内核。`a7` 选择读、写、执行、退出、列目录，或时钟、任务切换、复制一页之一。 |
+| `ecall` <sub>(RV32)</sub> | Environment call，环境调用 | 陷入更高一级的特权模式。用户程序用它进入内核。`a7` 选择退出、写、读、执行、列目录、fork、wait、sleep 或按名字查找。 |
 | `sret` <sub>(RV32)</sub> | Supervisor return，监管者返回 | 跳到 `sepc`，并把 `SPIE` 复制回 `SIE`。陷阱处理函数这样返回。 |
 | `sfence.vma` | Supervisor fence, virtual memory，监管者虚拟内存屏障 | 丢掉 CPU 已经缓存的地址翻译。写 `satp` 的前后各执行一次。 |
 | `csrr` / `csrw` | CSR read / CSR write，读 / 写控制状态寄存器 | 在通用寄存器和控制寄存器之间搬一个值。M-mode 用到 `pmpaddr0`、`pmpcfg0`、`medeleg`、`mideleg`、`mstatus`、`mepc`、`mcounteren` 和 `menvcfgh`。S-mode 用到 `satp`、`stvec`、`sepc`、`scause`、`sie`、`sstatus`、`sscratch`、`time`、`timeh`、`stimecmp` 和 `stimecmph`。 |
-| `wfi` | Wait for interrupt，等待中断 | 停到有中断挂起。时钟那一步用它等一次滴答。 |
+| `wfi` | Wait for interrupt，等待中断 | 停到有中断挂起。shell 等一行输入时，以及 `sleep` 等毫秒时，都靠下一次时钟把它叫醒。 |
 
 ## 上面提到的位
 

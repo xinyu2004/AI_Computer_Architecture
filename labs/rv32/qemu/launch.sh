@@ -2,7 +2,7 @@
 # Build src/rv32 and boot it on QEMU's virt board.
 #   labs/rv32/qemu/launch.sh
 # The UART prints the machine lines and then stays at the shell.
-# timer, schedule, and copy_page are commands at that prompt.
+# ls, echo, and sleep are programs on the disk. exit powers off.
 # The editor's RV32 session sets QEMU_GDB=1 and pauses at reset.
 
 set -e
@@ -31,8 +31,10 @@ fi
 make -C "$root/src/rv32"
 mkdir -p "$root/images"
 python3 "$root/labs/rv32/qemu/mkimage.py" "$root/images/rv32.img" \
-	ls "$root/src/rv32/user/ls.elf" \
-	sh "$root/src/rv32/user/sh.elf"
+	ls "$root/src/user/ls.elf" \
+	sh "$root/src/user/sh.elf" \
+	echo "$root/src/user/echo.elf" \
+	sleep "$root/src/user/sleep.elf"
 
 disk="-drive file=$root/images/rv32.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0"
 
