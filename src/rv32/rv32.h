@@ -33,6 +33,7 @@ void uart_puts(const char *s);
 void uart_hex(uint32_t value);
 void uart_u32(uint32_t value);
 int uart_getc(void);
+int read_line(char *buf, uint32_t cap);
 
 #define FDT_VIRTIO_MAX 8
 
@@ -40,7 +41,10 @@ struct fdt_info {
 	uint32_t uart;
 	uint32_t timebase;
 	uint32_t virtio[FDT_VIRTIO_MAX];
+	uint32_t virq[FDT_VIRTIO_MAX];
 	int nvirtio;
+	uint32_t plic;
+	int plic_context;
 	uint32_t test;
 };
 
@@ -50,7 +54,7 @@ void poweroff_at(uint32_t addr);
 void poweroff(void);
 
 void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio,
-	    uint32_t test);
+	    uint32_t test, uint32_t plic);
 void vm_on(void);
 void vm_map_user(void);
 void vm_user_clear(void);
@@ -62,14 +66,17 @@ uint32_t vm_user_pa(uint32_t va);
 
 void swtch(struct context *old, struct context *next);
 
-int virtio_init(const uint32_t *bases, int n);
+int virtio_init(const struct fdt_info *fdt);
 uint32_t virtio_base(void);
 int virtio_read(uint32_t sector, void *dst);
+void virtio_isr(void);
 
 int fs_init(void);
 int fs_read(const char *name, void *dst, uint32_t cap, uint32_t *out_len);
 int fs_list(char *dst, uint32_t cap);
 int fs_exists(const char *name);
+
+extern uint32_t name_block;
 
 void trap_init(void);
 void timer_arm(uint32_t timebase);

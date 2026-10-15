@@ -35,6 +35,36 @@ int uart_getc(void)
 	return uart[0];
 }
 
+int read_line(char *buf, uint32_t cap)
+{
+	uint32_t n = 0;
+
+	if (cap == 0)
+		return 0;
+	for (;;) {
+		int c = uart_getc();
+
+		if (c == '\r')
+			c = '\n';
+		if (c == 0x7f || c == 0x08) {
+			if (n > 0) {
+				n--;
+				uart_puts("\b \b");
+			}
+			continue;
+		}
+		if (c == '\n') {
+			uart_putc('\n');
+			break;
+		}
+		if (n + 1u < cap) {
+			buf[n++] = (char)c;
+			uart_putc((char)c);
+		}
+	}
+	return (int)n;
+}
+
 void uart_putc(char c)
 {
 	if (c == '\n')

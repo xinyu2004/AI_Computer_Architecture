@@ -14,8 +14,23 @@ struct dent {
 	uint32_t len;
 };
 
+/* Thirty-two sectors. A second read of one of them returns this copy. */
+#define NCACHE 32
+
+struct cbuf {
+	uint32_t sector;
+	int valid;
+	uint8_t data[512];
+};
+
 static struct dent dents[8];
 static int ndents;
+static struct cbuf cache[NCACHE];
+static int cache_next;
+
+uint32_t name_block;
+
+static int bread(uint32_t sector_no, void *dst);
 
 static int streq(const char *a, const char *b)
 {
@@ -33,7 +48,7 @@ int fs_init(void)
 	uint32_t n;
 	uint32_t i;
 
-	if (virtio_read(0, sec) != 0)
+	if (bread(0, sec) != 0)
 		return -1;
 	magic = (uint32_t)sec[0] | ((uint32_t)sec[1] << 8) |
 		((uint32_t)sec[2] << 16) | ((uint32_t)sec[3] << 24);
@@ -41,7 +56,7 @@ int fs_init(void)
 	    ((uint32_t)sec[6] << 16) | ((uint32_t)sec[7] << 24);
 	if (magic != FS_MAGIC || n == 0 || n > 8)
 		return -1;
-	if (virtio_read(1, sec) != 0)
+	if (bread(1, sec) != 0)
 		return -1;
 	ndents = (int)n;
 	for (i = 0; i < n; i++)
@@ -49,13 +64,38 @@ int fs_init(void)
 	return 0;
 }
 
+__attribute__((noinline))
+static int bread(uint32_t sector_no, void *dst)
+{
+	int i;
+	struct cbuf *b;
+
+	for (i = 0; i < NCACHE; i++) {
+		if (cache[i].valid && cache[i].sector == sector_no) {
+			memcpy(dst, cache[i].data, 512);
+			return 0;
+		}
+	}
+	b = &cache[cache_next];
+	cache_next = (cache_next + 1) % NCACHE;
+	if (virtio_read(sector_no, b->data) != 0)
+		return -1;
+	b->sector = sector_no;
+	b->valid = 1;
+	memcpy(dst, b->data, 512);
+	return 0;
+}
+
+__attribute__((noinline))
 static int lookup(const char *name)
 {
 	int i;
 
 	for (i = 0; i < ndents; i++) {
-		if (streq(dents[i].name, name))
+		if (streq(dents[i].name, name)) {
+			name_block = dents[i].off / 512u;
 			return i;
+		}
 	}
 	return -1;
 }
@@ -82,7 +122,7 @@ int fs_read(const char *name, void *dst, uint32_t cap, uint32_t *out_len)
 
 		if (chunk > len - done)
 			chunk = len - done;
-		if (virtio_read(sector, sec) != 0)
+		if (bread(sector, sec) != 0)
 			return -1;
 		memcpy((uint8_t *)dst + done, sec + skip, chunk);
 		done += chunk;

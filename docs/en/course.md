@@ -8,7 +8,7 @@ Linux 0.11 walks these questions first. RV32 answers them again with its own fun
 
 ![One echo hello](../../figures/one-command.svg)
 
-![A byte and a block, not built yet](../../figures/byte-block.svg)
+![A byte and a block](../../figures/byte-block.svg)
 
 | Question | 80386 | RV32 | ARM |
 | --- | --- | --- | --- |
@@ -20,10 +20,10 @@ Linux 0.11 walks these questions first. RV32 answers them again with its own fun
 | Which instruction enters the kernel, and where the call number sits | `system_call` in `kernel/system_call.s`, vector `0x80` | [ecall](course/rv32.md#ecall) | |
 | Where the two tasks keep their registers, and which instruction switches | [Task switch](cases/schedule.md) | [swtch](course/rv32.md#switch) | |
 | What copies 4KiB, and what makes that code run | [Copy one page](cases/copy-page.md) | [copy_page](course/rv32.md#copy) | |
-| How a byte arrives from a device | `kernel/chr_drv/keyboard.S`, vector `0x21` | Later half, not built | |
-| How that byte becomes a line | `kernel/chr_drv/tty_io.c` | Later half, not built | |
-| How a name finds a block | `fs/namei.c` | Later half, not built. The flat directory already finds a file by name | |
-| Whether the same block is still in memory the second time | `bread` in `fs/buffer.c` | Later half, not built | |
-| What wakes the waiter when the disk finishes | `kernel/blk_drv/hd.c`, vector `0x2E` | Later half, not built | |
+| How a byte arrives from a device | `kernel/chr_drv/keyboard.S`, vector `0x21` | [uart_getc](course/rv32.md#byte) | |
+| How that byte becomes a line | `kernel/chr_drv/tty_io.c` | [read_line](course/rv32.md#line) | |
+| How a name finds a block | `fs/namei.c` | [lookup](course/rv32.md#name) | |
+| Whether the same block is still in memory the second time | `bread` in `fs/buffer.c` | [bread](course/rv32.md#block) | |
+| What wakes the waiter when the disk finishes | `kernel/blk_drv/hd.c`, vector `0x2E` | [virtio_isr](course/rv32.md#disk) | |
 
-The last five RV32 cells are the third picture. The first eight stops are in [the RV32 pass](course/rv32.md).
+Every stop is in [the RV32 pass](course/rv32.md). The third picture is the last five questions.

@@ -80,12 +80,18 @@ static int map_range(uint32_t start, uint32_t end, uint32_t flags)
 	return 0;
 }
 
-void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio, uint32_t test)
+void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio, uint32_t test,
+	    uint32_t plic)
 {
 	uint32_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
 	uint32_t mmio = PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+	uint32_t plic_off[4];
 	int i;
 
+	plic_off[0] = 0;
+	plic_off[1] = 0x2000u;
+	plic_off[2] = 0x200000u;
+	plic_off[3] = 0x201000u;
 	if (map_range((uint32_t)_start, (uint32_t)_end, flags) != 0)
 		poweroff();
 	if (map_page(uart & ~0xfffu, uart & ~0xfffu, mmio) != 0)
@@ -96,6 +102,12 @@ void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio, uint32_t test)
 	}
 	if (test != 0 && map_page(test & ~0xfffu, test & ~0xfffu, mmio) != 0)
 		poweroff();
+	for (i = 0; i < 4; i++) {
+		uint32_t pa = (plic + plic_off[i]) & ~0xfffu;
+
+		if (plic != 0 && map_page(pa, pa, mmio) != 0)
+			poweroff();
+	}
 }
 
 void vm_map_user(void)

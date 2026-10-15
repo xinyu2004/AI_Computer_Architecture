@@ -146,7 +146,7 @@ void shell_start(const struct fdt_info *fdt)
 {
 	uint32_t entry;
 
-	if (virtio_init(fdt->virtio, fdt->nvirtio) != 0) {
+	if (virtio_init(fdt) != 0) {
 		uart_puts("no block device\n");
 		poweroff();
 	}
@@ -318,36 +318,18 @@ static int sys_write(uint32_t va, uint32_t len)
 static int sys_read(uint32_t va, uint32_t len)
 {
 	char buf[128];
-	uint32_t n = 0;
+	int n;
 
 	if (len == 0)
 		return 0;
 	if (len > sizeof buf)
 		len = sizeof buf;
-	for (;;) {
-		int c = uart_getc();
-
-		if (c == '\r')
-			c = '\n';
-		if (c == 0x7f || c == 0x08) {
-			if (n > 0) {
-				n--;
-				uart_puts("\b \b");
-			}
-			continue;
-		}
-		if (c == '\n') {
-			uart_putc('\n');
-			break;
-		}
-		if (n + 1u < len) {
-			buf[n++] = (char)c;
-			uart_putc((char)c);
-		}
-	}
-	if (copy_out(va, buf, n) != 0)
+	n = read_line(buf, len);
+	if (n < 0)
 		return -1;
-	return (int)n;
+	if (copy_out(va, buf, (uint32_t)n) != 0)
+		return -1;
+	return n;
 }
 
 void syscall(struct trapframe *tf)

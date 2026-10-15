@@ -31,7 +31,7 @@ void main(uint32_t hart, uint32_t dtb)
 	uart_putc('\n');
 
 	trap_init();
-	vm_init(fdt.uart, fdt.virtio, fdt.nvirtio, fdt.test);
+	vm_init(fdt.uart, fdt.virtio, fdt.nvirtio, fdt.test, fdt.plic);
 	vm_on();
 	uart_puts("sv32 on\n");
 	shell_start(&fdt);

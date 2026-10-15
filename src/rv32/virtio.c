@@ -6,6 +6,8 @@
  * One queue, one read at a time. The request, the data, and the
  * descriptor rings are ordinary kernel memory. The device uses those
  * physical addresses, which match the kernel's virtual addresses.
+ * A finished read raises the virtio-mmio interrupt. virtio_read waits
+ * until the used ring advances, then virtio_isr claims it on the PLIC.
  */
 
 #define MAGIC 0x74726976u
@@ -46,6 +48,9 @@ struct breq {
 };
 
 static volatile uint32_t *regs;
+static uint32_t plic_base;
+static int plic_ctx;
+static uint32_t disk_irq;
 static struct vdesc desc[8] __attribute__((aligned(16)));
 static struct vavail avail __attribute__((aligned(2)));
 static struct vused used __attribute__((aligned(4)));
@@ -113,10 +118,32 @@ static int legacy_setup(void)
 	return 0;
 }
 
-int virtio_init(const uint32_t *bases, int n)
+static volatile uint32_t *plic_word(uint32_t off)
+{
+	return (volatile uint32_t *)(plic_base + off);
+}
+
+static void plic_enable(uint32_t irq)
+{
+	volatile uint32_t *prio = plic_word(irq * 4u);
+	volatile uint32_t *en = plic_word(0x2000u + (uint32_t)plic_ctx * 0x80u +
+					  (irq / 32u) * 4u);
+	volatile uint32_t *th = plic_word(0x200000u + (uint32_t)plic_ctx * 0x1000u);
+
+	*prio = 1;
+	*en |= 1u << (irq % 32u);
+	*th = 0;
+}
+
+int virtio_init(const struct fdt_info *fdt)
 {
 	int i;
+	int n = fdt->nvirtio;
+	const uint32_t *bases = fdt->virtio;
 
+	plic_base = fdt->plic;
+	plic_ctx = fdt->plic_context;
+	disk_irq = 0;
 	for (i = 0; i < n; i++) {
 		uint32_t ver;
 		uint32_t id;
@@ -134,13 +161,44 @@ int virtio_init(const uint32_t *bases, int n)
 		memset(desc, 0, sizeof desc);
 		memset((void *)&avail, 0, sizeof avail);
 		memset((void *)&used, 0, sizeof used);
-		if (ver == 2)
-			return modern_setup();
-		if (ver == 1)
-			return legacy_setup();
-		return -1;
+		if (ver == 2) {
+			if (modern_setup() != 0)
+				return -1;
+		} else if (ver == 1) {
+			if (legacy_setup() != 0)
+				return -1;
+		} else {
+			return -1;
+		}
+		disk_irq = fdt->virq[i];
+		if (plic_base != 0 && disk_irq != 0) {
+			uint32_t seie = 1u << 9;
+
+			plic_enable(disk_irq);
+			asm volatile("csrs sie, %0" :: "r"(seie));
+		}
+		return 0;
 	}
 	return -1;
+}
+
+void virtio_isr(void)
+{
+	volatile uint32_t *claim;
+	uint32_t irq;
+	uint32_t intr;
+
+	if (plic_base == 0)
+		return;
+	claim = plic_word(0x200004u + (uint32_t)plic_ctx * 0x1000u);
+	irq = *claim;
+	if (irq == disk_irq && regs != 0) {
+		intr = rr(0x60);
+		if (intr != 0)
+			wr(0x64, intr);
+	}
+	if (irq != 0)
+		*claim = irq;
 }
 
 uint32_t virtio_base(void)
@@ -176,12 +234,30 @@ int virtio_read(uint32_t sector_no, void *dst)
 	asm volatile("fence w, w" ::: "memory");
 	avail.idx = (uint16_t)(idx + 1u);
 	asm volatile("fence w, w" ::: "memory");
-	wr(0x50, 0);
 	want = (uint16_t)(idx + 1u);
+	if (plic_base != 0 && disk_irq != 0) {
+		uint32_t sie = 1u << 1;
+
+		asm volatile("csrc sstatus, %0" :: "r"(sie));
+	}
+	wr(0x50, 0);
 	spins = 0;
 	while (used.idx != want) {
-		if (++spins > 10000000u)
+		if (plic_base != 0 && disk_irq != 0)
+			asm volatile("wfi");
+		if (++spins > 1000000u) {
+			if (plic_base != 0 && disk_irq != 0) {
+				uint32_t sie = 1u << 1;
+
+				asm volatile("csrs sstatus, %0" :: "r"(sie));
+			}
 			return -1;
+		}
+	}
+	if (plic_base != 0 && disk_irq != 0) {
+		uint32_t sie = 1u << 1;
+
+		asm volatile("csrs sstatus, %0" :: "r"(sie));
 	}
 	asm volatile("fence r, r" ::: "memory");
 	intr = rr(0x60);

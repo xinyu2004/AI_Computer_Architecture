@@ -25,8 +25,13 @@ struct fdt_frame {
 	int is_uart;
 	int is_virtio;
 	int is_test;
+	int is_plic;
 	int have_reg;
+	int have_irq;
+	int have_context;
 	uint32_t reg;
+	uint32_t irq;
+	int plic_context;
 };
 
 static uint32_t fdt32(const uint8_t *p)
@@ -111,6 +116,8 @@ int fdt_parse(const void *dtb, struct fdt_info *out)
 	out->uart = 0;
 	out->timebase = 0;
 	out->nvirtio = 0;
+	out->plic = 0;
+	out->plic_context = 1;
 	out->test = 0;
 
 	if (dtb == 0)
@@ -157,8 +164,13 @@ int fdt_parse(const void *dtb, struct fdt_info *out)
 			fr->is_uart = 0;
 			fr->is_virtio = 0;
 			fr->is_test = 0;
+			fr->is_plic = 0;
 			fr->have_reg = 0;
+			fr->have_irq = 0;
+			fr->have_context = 0;
 			fr->reg = 0;
+			fr->irq = 0;
+			fr->plic_context = 1;
 			while (p < totalsize && b[p] != '\0')
 				p++;
 			if (p >= totalsize)
@@ -177,8 +189,14 @@ int fdt_parse(const void *dtb, struct fdt_info *out)
 				got_uart = 1;
 			}
 			if (fr->is_virtio && fr->phys && fr->have_reg &&
-			    out->nvirtio < FDT_VIRTIO_MAX)
+			    out->nvirtio < FDT_VIRTIO_MAX) {
+				out->virq[out->nvirtio] = fr->have_irq ? fr->irq : 0;
 				out->virtio[out->nvirtio++] = fr->reg;
+			}
+			if (fr->is_plic && fr->phys && fr->have_reg && out->plic == 0)
+				out->plic = fr->reg;
+			if (fr->is_plic && fr->have_context)
+				out->plic_context = fr->plic_context;
 			if (fr->is_test && out->test == 0) {
 				if (!fr->phys || !fr->have_reg)
 					return -1;
@@ -215,10 +233,30 @@ int fdt_parse(const void *dtb, struct fdt_info *out)
 			 contains_string((const char *)val, len, "virtio,mmio"))
 			fr->is_virtio = 1;
 		else if (name_is(prop, "compatible") &&
+			 (contains_string((const char *)val, len, "riscv,plic0") ||
+			  contains_string((const char *)val, len, "sifive,plic-1.0.0")))
+			fr->is_plic = 1;
+		else if (name_is(prop, "compatible") &&
 			 (contains_string((const char *)val, len, "sifive,test0") ||
 			  contains_string((const char *)val, len, "sifive,test1")))
 			fr->is_test = 1;
-		else if (name_is(prop, "reg")) {
+		else if (name_is(prop, "interrupts") && len >= 4u) {
+			fr->irq = fdt32(val);
+			fr->have_irq = 1;
+		} else if (name_is(prop, "interrupts-extended") &&
+			   len >= 8u && (len % 8u) == 0) {
+			uint32_t nent = len / 8u;
+			uint32_t i;
+
+			for (i = 0; i < nent; i++) {
+				uint32_t src = fdt32(val + i * 8u + 4u);
+
+				if (src == 9u) {
+					fr->plic_context = (int)i;
+					fr->have_context = 1;
+				}
+			}
+		} else if (name_is(prop, "reg")) {
 			uint32_t addr;
 
 			if (read_reg(val, len, fr->ac, &addr) == 0) {

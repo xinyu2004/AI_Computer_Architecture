@@ -55,6 +55,10 @@ void trap_handler(struct trapframe *tf)
 		set_timer(rdtime() + timer_interval);
 		return;
 	}
+	if (cause == 0x80000009u) {
+		virtio_isr();
+		return;
+	}
 	if (cause == 8u) {
 		syscall(tf);
 		return;

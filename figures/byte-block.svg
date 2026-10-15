@@ -1,22 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="720" height="120" viewBox="0 0 720 120">
   <style>
     text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
-    .q { font-size: 18px; font-weight: 700; }
+    .fn { font-family: ui-monospace, monospace; font-size: 13px; }
     .box { fill: #f5f5f4; stroke: #44403c; }
   </style>
   <rect class="box" x="16" y="28" width="120" height="64" rx="6"/>
   <text x="76" y="52" text-anchor="middle">byte</text>
-  <text class="q" x="76" y="74" text-anchor="middle">?</text>
+  <text class="fn" x="76" y="74" text-anchor="middle">uart_getc</text>
   <rect class="box" x="156" y="28" width="120" height="64" rx="6"/>
   <text x="216" y="52" text-anchor="middle">line</text>
-  <text class="q" x="216" y="74" text-anchor="middle">?</text>
+  <text class="fn" x="216" y="74" text-anchor="middle">read_line</text>
   <rect class="box" x="296" y="28" width="120" height="64" rx="6"/>
   <text x="356" y="52" text-anchor="middle">name</text>
-  <text class="q" x="356" y="74" text-anchor="middle">?</text>
+  <text class="fn" x="356" y="74" text-anchor="middle">lookup</text>
   <rect class="box" x="436" y="28" width="120" height="64" rx="6"/>
   <text x="496" y="52" text-anchor="middle">block</text>
-  <text class="q" x="496" y="74" text-anchor="middle">?</text>
+  <text class="fn" x="496" y="74" text-anchor="middle">bread</text>
   <rect class="box" x="576" y="28" width="128" height="64" rx="6"/>
   <text x="640" y="52" text-anchor="middle">disk done</text>
-  <text class="q" x="640" y="74" text-anchor="middle">?</text>
+  <text class="fn" x="640" y="74" text-anchor="middle">virtio_isr</text>
 </svg>

@@ -8,7 +8,7 @@ Linux 0.11 先把这些问题走一遍。RV32 用自己的函数再答一遍。A
 
 ![一次 echo hello](../../figures/one-command.svg)
 
-![一个字节和一块，还没做](../../figures/byte-block.svg)
+![一个字节和一块](../../figures/byte-block.svg)
 
 | 问 | 80386 | RV32 | ARM |
 | --- | --- | --- | --- |
@@ -20,10 +20,10 @@ Linux 0.11 先把这些问题走一遍。RV32 用自己的函数再答一遍。A
 | 用户从哪条指令进内核，调用号在哪 | `kernel/system_call.s` 的 `system_call`，向量 `0x80` | [ecall](course/rv32.md#ecall) | |
 | 两个任务的寄存器在哪，哪条指令切换 | [任务切换](cases/schedule.md) | [swtch](course/rv32.md#switch) | |
 | 谁拷走 4KiB，什么让它跑起来 | [搬一页](cases/copy-page.md) | [copy_page](course/rv32.md#copy) | |
-| 一个字节怎样从设备进来 | `kernel/chr_drv/keyboard.S`，向量 `0x21` | 后半，还没做 | |
-| 这个字节怎样排成一行 | `kernel/chr_drv/tty_io.c` | 后半，还没做 | |
-| 一个名字怎样找到一块 | `fs/namei.c` | 后半，还没做。现在的平面目录能按名字找到文件 | |
-| 同一块第二次还在不在内存里 | `fs/buffer.c` 的 `bread` | 后半，还没做 | |
-| 磁盘做完时谁被叫醒 | `kernel/blk_drv/hd.c`，向量 `0x2E` | 后半，还没做 | |
+| 一个字节怎样从设备进来 | `kernel/chr_drv/keyboard.S`，向量 `0x21` | [uart_getc](course/rv32.md#byte) | |
+| 这个字节怎样排成一行 | `kernel/chr_drv/tty_io.c` | [read_line](course/rv32.md#line) | |
+| 一个名字怎样找到一块 | `fs/namei.c` | [lookup](course/rv32.md#name) | |
+| 同一块第二次还在不在内存里 | `fs/buffer.c` 的 `bread` | [bread](course/rv32.md#block) | |
+| 磁盘做完时谁被叫醒 | `kernel/blk_drv/hd.c`，向量 `0x2E` | [virtio_isr](course/rv32.md#disk) | |
 
-后五问的 RV32 格对应上面第三张图。前八问的停法在 [RV32 这一遍](course/rv32.md)。
+每一问的停法在 [RV32 这一遍](course/rv32.md)。第三张图是后五问。
