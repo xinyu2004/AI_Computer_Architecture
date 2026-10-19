@@ -2,7 +2,7 @@
 
 [English](../en/course.md)
 
-Linux 0.11 先把这些问题走一遍。RV32 用自己的函数再答一遍。ARM 还没有内核，那一列空着。RV64 是这门 RISC-V 课里的位宽差异，不单开一列。周期和流水线停顿留在 80386 的 [gem5](gem5.md)。
+Linux 0.11 先把这些问题走一遍。RV32 用自己的函数再答一遍。ARM 还没有内核，那一列空着。RV64 是这门 RISC-V 课里的[位宽差异](course/rv64.md)，不单开一列。周期和流水线停顿留在 80386 的 [gem5](gem5.md)。
 
 ![启动时的几档](../../figures/boot-modes.svg)
 

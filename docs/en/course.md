@@ -2,7 +2,7 @@
 
 [中文](../zh/course.md)
 
-Linux 0.11 walks these questions first. RV32 answers them again with its own functions. The ARM column stays empty until that kernel exists. RV64 is the register-width difference inside this RISC-V course, not another column. Cycles and pipeline stalls stay in the 80386 [gem5](gem5.md) lab.
+Linux 0.11 walks these questions first. RV32 answers them again with its own functions. The ARM column stays empty until that kernel exists. RV64 is the [register-width difference](course/rv64.md) inside this RISC-V course, not another column. Cycles and pipeline stalls stay in the 80386 [gem5](gem5.md) lab.
 
 ![The modes at boot](../../figures/boot-modes.svg)
 

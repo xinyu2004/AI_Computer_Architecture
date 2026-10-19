@@ -27,13 +27,15 @@ Step 4, cycles and misses
   python3-venv       python3 -m venv    scons is installed in .gem5/.venv
   m4                 m4                 the gem5 build runs m4
 
-Step 5, RV32
+Step 5, RV32 and the RV64 register width
   gcc-riscv64-unknown-elf
                      riscv64-unknown-elf-gcc
-                                        build src/rv32 for RV32
+                                        build src/rv32, and src/rv64 with lp64
   qemu-system-riscv  qemu-system-riscv32
                                         labs/rv32/qemu/launch.sh opens this emulator
-  gdb-multiarch      gdb-multiarch      F5, RV32, stops at _start
+                     qemu-system-riscv64
+                                        labs/rv64/qemu/launch.sh opens this emulator
+  gdb-multiarch      gdb-multiarch      F5, RV32 or RV64, stops at _start
 
 If the archive has no qemu-system-riscv package, qemu-system-misc is
 installed instead.

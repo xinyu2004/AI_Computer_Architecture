@@ -19,6 +19,9 @@ core
 # RV32 kernel and user programs. labs/rv32/qemu/launch.sh builds them.
 src/rv32/kernel.elf
 src/user/*.elf
+# RV64 kernel and user programs. labs/rv64/qemu/launch.sh builds them.
+src/rv64/kernel.elf
+src/rv64/user/*.elf
 # cpp output of keyboard.S; the source is keyboard.S
 **/kernel/chr_drv/keyboard.s
 

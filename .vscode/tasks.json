@@ -46,6 +46,29 @@
                 "panel": "dedicated",
                 "showReuseMessage": false
             }
+        },
+        {
+            "label": "rv64-gdb",
+            "type": "shell",
+            "command": "${workspaceFolder}/labs/rv64/qemu/qemu-gdb.sh",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "rv64-gdb",
+                "pattern": {
+                    "regexp": "^qemu-gdb: (.+)$",
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Display:",
+                    "endsPattern": "GDB listening on 127\\.0\\.0\\.1:1234"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "showReuseMessage": false
+            }
         }
     ]
 }
