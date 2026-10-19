@@ -22,6 +22,13 @@ src/user/*.elf
 # RV64 kernel and user programs. labs/rv64/qemu/launch.sh builds them.
 src/rv64/kernel.elf
 src/rv64/user/*.elf
+# ARMv7 and AArch64 images. The launch scripts build them.
+src/armv7/kernel.elf
+src/armv7/kernel.bin
+src/armv7/user/*.elf
+src/aarch64/kernel.elf
+src/aarch64/kernel.bin
+src/aarch64/user/*.elf
 # cpp output of keyboard.S; the source is keyboard.S
 **/kernel/chr_drv/keyboard.s
 

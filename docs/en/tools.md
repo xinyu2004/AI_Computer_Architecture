@@ -52,4 +52,10 @@ gem5 itself is not an apt package. `labs/i386/gem5/build.sh` clones the pinned r
 
 `gdb-multiarch` is the debugger for that kernel. Press F5 and choose **RV32**. It stops at `_start` in `src/rv32/entry.S`, the kernel's first instruction. The UART output is in the terminal of that task. `labs/rv32/qemu/launch.sh` by itself still boots to the shell.
 
-The same package also provides `qemu-system-riscv64`. `make -C src/rv64` uses `-march=rv64gc -mabi=lp64`. `labs/rv64/qemu/launch.sh` boots that kernel. Press F5 and choose **RV64** to stop at `_start` in `src/rv64/entry.S`. Linux 0.11, RV32, and RV64 listen on `127.0.0.1:1234`. Start one at a time.
+The same package also provides `qemu-system-riscv64`. `make -C src/rv64` uses `-march=rv64gc -mabi=lp64`. `labs/rv64/qemu/launch.sh` boots that kernel. Press F5 and choose **RV64** to stop at `_start` in `src/rv64/entry.S`. Linux 0.11, RV32, RV64, ARMv7, and AArch64 listen on `127.0.0.1:1234`. Start one at a time.
+
+## Step 5, ARM
+
+`gcc-arm-none-eabi` provides `arm-none-eabi-gcc`. `make -C src/armv7` uses `-mcpu=cortex-a15`. `qemu-system-arm` provides both `qemu-system-arm` and `qemu-system-aarch64`. `labs/armv7/qemu/launch.sh` boots `src/armv7/kernel.bin` with `-machine virt -cpu cortex-a15`. Press F5 and choose **ARMv7**.
+
+`gcc-aarch64-linux-gnu` provides `aarch64-linux-gnu-gcc`. `make -C src/aarch64` uses `-mcpu=cortex-a57`. `labs/aarch64/qemu/launch.sh` boots `src/aarch64/kernel.bin` with `-machine virt -cpu cortex-a57`. Press F5 and choose **AArch64**. QEMU loads the raw image. The editor's symbols come from `kernel.elf`. [What the ARMv7 kernel does](armv7.md). [What the AArch64 kernel does](aarch64.md).

@@ -37,6 +37,15 @@ Step 5, RV32 and the RV64 register width
                                         labs/rv64/qemu/launch.sh opens this emulator
   gdb-multiarch      gdb-multiarch      F5, RV32 or RV64, stops at _start
 
+Step 5, ARMv7 and AArch64
+  gcc-arm-none-eabi  arm-none-eabi-gcc  build src/armv7
+  gcc-aarch64-linux-gnu
+                     aarch64-linux-gnu-gcc
+                                        build src/aarch64
+  qemu-system-arm    qemu-system-arm    labs/armv7/qemu/launch.sh
+                     qemu-system-aarch64
+                                        labs/aarch64/qemu/launch.sh
+
 If the archive has no qemu-system-riscv package, qemu-system-misc is
 installed instead.
 
@@ -67,4 +76,5 @@ fi
 sudo apt-get install -y build-essential gcc-multilib qemu-system-x86 gdb \
 	bochs bochs-sdl bochsbios vgabios \
 	python3-dev python3-venv m4 \
-	gcc-riscv64-unknown-elf gdb-multiarch "$riscv_qemu"
+	gcc-riscv64-unknown-elf gdb-multiarch "$riscv_qemu" \
+	gcc-arm-none-eabi gcc-aarch64-linux-gnu qemu-system-arm

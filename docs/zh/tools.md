@@ -52,4 +52,10 @@ gem5 本身不是 apt 包。`labs/i386/gem5/build.sh` 把固定的 v25.1.0.1 克
 
 `gdb-multiarch` 是这份内核的调试器。按 F5，选择 **RV32**。它停在 `src/rv32/entry.S` 的 `_start`，也就是内核的第一条指令。UART 输出在那个任务的终端里。单独运行 `labs/rv32/qemu/launch.sh` 仍然进入 shell。
 
-同一个包也提供 `qemu-system-riscv64`。`make -C src/rv64` 使用 `-march=rv64gc -mabi=lp64`。`labs/rv64/qemu/launch.sh` 启动这份内核。按 F5 并选择 **RV64**，停在 `src/rv64/entry.S` 的 `_start`。Linux 0.11、RV32 和 RV64 都听 `127.0.0.1:1234`，一次启动一个。
+同一个包也提供 `qemu-system-riscv64`。`make -C src/rv64` 使用 `-march=rv64gc -mabi=lp64`。`labs/rv64/qemu/launch.sh` 启动这份内核。按 F5 并选择 **RV64**，停在 `src/rv64/entry.S` 的 `_start`。Linux 0.11、RV32、RV64、ARMv7 和 AArch64 都听 `127.0.0.1:1234`，一次启动一个。
+
+## 第 5 步，ARM
+
+`gcc-arm-none-eabi` 提供 `arm-none-eabi-gcc`。`make -C src/armv7` 使用 `-mcpu=cortex-a15`。`qemu-system-arm` 同时提供 `qemu-system-arm` 和 `qemu-system-aarch64`。`labs/armv7/qemu/launch.sh` 用 `-machine virt -cpu cortex-a15` 启动 `src/armv7/kernel.bin`。按 F5 并选择 **ARMv7**。
+
+`gcc-aarch64-linux-gnu` 提供 `aarch64-linux-gnu-gcc`。`make -C src/aarch64` 使用 `-mcpu=cortex-a57`。`labs/aarch64/qemu/launch.sh` 用 `-machine virt -cpu cortex-a57` 启动 `src/aarch64/kernel.bin`。按 F5 并选择 **AArch64**。QEMU 加载的是原始镜像。编辑器的符号来自 `kernel.elf`。[ARMv7 内核做什么](armv7.md)。[AArch64 内核做什么](aarch64.md)。

@@ -12,13 +12,13 @@ This repository is for people learning computer architecture through Linux 0.11.
 2. **Build it on a contemporary computer and run it in QEMU.** [What this step changes, and why](docs/en/build-and-qemu.md). The source is adjusted so today's toolchain can compile it. Change a line, rebuild, and watch what the operating system does: whether it boots, whether a system call returns, and whether a process appears.
 3. **Watch the machine state in Bochs.** [What you look at, and how](docs/en/bochs.md). On this same system, follow registers, the GDT, the IDT, page tables, and the TSS as the kernel enters protected mode, takes interrupts, and switches tasks.
 4. **Watch the cost of that execution in gem5.** [What you measure, and how](docs/en/gem5.md). Along the same kernel paths, follow cycles, cache misses, and pipeline stalls.
-5. **Then look at other architectures.** [RV32 on the virt board](docs/en/rv32.md). After the x86 path works, keep the kernel small and add RISC-V, then ARM, to see what belongs to one architecture and what belongs to the operating system itself. `src/rv32/` is the first of those kernels. `src/rv64/` is the 64-bit register width of that same course.
+5. **Then look at other architectures.** [RV32 on the virt board](docs/en/rv32.md). After the x86 path works, keep the kernel small and add RISC-V, then ARM, to see what belongs to one architecture and what belongs to the operating system itself. `src/rv32/` is the first of those kernels. `src/rv64/` is the 64-bit register width of that same course. [ARMv7](docs/en/armv7.md) and [AArch64](docs/en/aarch64.md) are the two ARM kernels.
 
 ## Course
 
 ### [The same questions, on another CPU](docs/en/course.md)
 
-The 80386 answers them first, RV32 answers them again, and ARM is still empty.
+The 80386 answers them first, RV32 answers them again, and ARMv7 and AArch64 answer them in two columns.
 
 - Which instruction traps into the kernel on a system call
 - Where register state is saved across a context switch
@@ -58,6 +58,8 @@ Names that do not say what they do:
 | `src/linux-0.11/` | 80386 kernel we build and modify |
 | `src/rv32/` | RV32 kernel |
 | `src/rv64/` | RV64 kernel, same course, 64-bit registers |
+| `src/armv7/` | ARMv7 kernel, Cortex-A15 |
+| `src/aarch64/` | AArch64 kernel, Cortex-A57 |
 | `src/riscv/` | User entry shared by RV32 and RV64 |
 | `src/user/` | Programs on the disk: sh, ls, echo, sleep |
 | `labs/` | Launch scripts for each step |

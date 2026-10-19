@@ -75,6 +75,56 @@
                     "text": "source labs/rv64/qemu/boot.gdb"
                 }
             ]
+        },
+        {
+            "name": "ARMv7",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "armv7-gdb",
+            "program": "${workspaceFolder}/src/armv7/kernel.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:1234",
+            "launchCompleteCommand": "exec-continue",
+            "stopAtEntry": true,
+            "setupCommands": [
+                {
+                    "description": "boot.gdb uses paths from the repository root",
+                    "text": "cd ${workspaceFolder}"
+                }
+            ],
+            "postRemoteConnectCommands": [
+                {
+                    "description": "Stop at the kernel's first instruction",
+                    "text": "source labs/armv7/qemu/boot.gdb"
+                }
+            ]
+        },
+        {
+            "name": "AArch64",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "aarch64-gdb",
+            "program": "${workspaceFolder}/src/aarch64/kernel.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:1234",
+            "launchCompleteCommand": "exec-continue",
+            "stopAtEntry": true,
+            "setupCommands": [
+                {
+                    "description": "boot.gdb uses paths from the repository root",
+                    "text": "cd ${workspaceFolder}"
+                }
+            ],
+            "postRemoteConnectCommands": [
+                {
+                    "description": "Stop at the kernel's first instruction",
+                    "text": "source labs/aarch64/qemu/boot.gdb"
+                }
+            ]
         }
     ]
 }
