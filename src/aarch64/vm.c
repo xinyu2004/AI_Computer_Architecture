@@ -35,6 +35,11 @@ static uint8_t user_stack[4096] __attribute__((aligned(4096)));
 static uint8_t saved_code[USER_CODE_PAGES][4096];
 static uint8_t *active_stack;
 
+	/*
+	 * A table descriptor has bits [1:0] equal to 3. The next table's
+	 * physical address is the rest, page-aligned. Sixteen pages are
+	 * enough for the kernel map and the user window.
+	 */
 static uint64_t *next_table(uint64_t *table, uint32_t idx)
 {
 	uint64_t pte = table[idx];
@@ -49,6 +54,11 @@ static uint64_t *next_table(uint64_t *table, uint32_t idx)
 	return child;
 }
 
+	/*
+	 * T0SZ 25 means a 39-bit address, so the walk starts at level 1.
+	 * Level 1 is va[38:30], level 2 is va[29:21], and the level-3 page
+	 * is va[20:12]. AF is set so the first reference does not fault.
+	 */
 static int map_page(uint64_t va, uint64_t pa, uint64_t flags)
 {
 	uint64_t *l2 = next_table(root, (uint32_t)((va >> 30) & 0x1ffu));
@@ -104,6 +114,13 @@ void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio,
 		poweroff();
 }
 
+	/*
+	 * MAIR attr0 is 0x00, device nGnRnE. attr1 is 0x44, normal
+	 * non-cacheable, and it occupies bits [15:8]. TCR_EL1.T0SZ is 25,
+	 * EPD1 disables TTBR1, and IPS is 40-bit physical. TTBR0_EL1 is
+	 * the level-1 table. SCTLR_EL1.M turns translation on; A, C, SA,
+	 * I, and WXN stay clear so EL1 can execute the writable kernel.
+	 */
 void vm_on(void)
 {
 	uint64_t mair = 0x44ull << 8;

@@ -26,6 +26,11 @@ static uint64_t rdtime(void)
 	return now;
 }
 
+	/*
+	 * Direct mode: stvec is the address of trap_entry, low bits clear.
+	 * sie and sscratch start at zero. A user program later sets
+	 * sscratch to the trapframe.
+	 */
 void trap_init(void)
 {
 	uint32_t zero = 0;
@@ -40,6 +45,12 @@ void trap_handler(struct trapframe *tf)
 {
 	uint64_t cause;
 
+	/*
+	 * Bit 63 of scause says interrupt. 5 is the supervisor timer, 9 is
+	 * the supervisor external interrupt (the PLIC). Cause 8 is an
+	 * ecall from U-mode. sepc then points at the ecall, and syscall
+	 * advances it by 4.
+	 */
 	asm volatile("csrr %0, scause" : "=r"(cause));
 	if (cause == 0x8000000000000005ull) {
 		set_timer(rdtime() + timer_interval);
@@ -61,6 +72,11 @@ void trap_handler(struct trapframe *tf)
 	poweroff();
 }
 
+	/*
+	 * stimecmp is one 64-bit register, armed one interval ahead. STIE
+	 * is sie bit 5. SIE is sstatus bit 1, and setting it is what lets
+	 * the prompt take ticks.
+	 */
 void timer_arm(uint32_t timebase)
 {
 	uint32_t stie = 1u << 5;

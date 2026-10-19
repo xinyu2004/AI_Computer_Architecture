@@ -9,6 +9,7 @@ typedef int int32_t;
 typedef uint64_t reg_t;
 typedef unsigned long uintptr_t;
 
+/* ra, sp, and s0-s11, eight bytes each. swtch writes this block. */
 struct context {
 	reg_t ra;
 	reg_t sp;
@@ -87,6 +88,10 @@ void copy_page(uint64_t *dst, const uint64_t *src);
 
 extern char current_name[28];
 
+/*
+ * 280 bytes, eight bytes per slot. x[0] is unused. sepc is at 256,
+ * sstatus at 264, and kernel_sp at 272.
+ */
 struct trapframe {
 	reg_t x[32];
 	reg_t sepc;

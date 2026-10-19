@@ -1,5 +1,8 @@
 # ARMv7-A kernel for Cortex-A15. User programs are built here so they
 # do not replace the RISC-V ELF files.
+# kernel.bin is the raw image the virt stub loads at 0x40010000.
+# kernel.elf is for the debugger. --nmagic keeps a user ELF from being
+# padded out to its link address.
 CROSS ?= arm-none-eabi-
 CC := $(CROSS)gcc
 

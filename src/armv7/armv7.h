@@ -7,6 +7,7 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef int int32_t;
 
+/* Callee-saved bank. swtch writes these and stays in SVC. */
 struct context {
 	uint32_t r4;
 	uint32_t r5;
@@ -20,6 +21,10 @@ struct context {
 	uint32_t sp;
 };
 
+/*
+ * Matches the 68-byte SVC frame: r0-r12, user sp, user lr, the return
+ * pc (LR_svc), and SPSR.
+ */
 struct trapframe {
 	uint32_t r[13];
 	uint32_t sp_usr;
@@ -111,6 +116,7 @@ static inline void irq_off(void)
 	asm volatile("cpsid i" ::: "memory");
 }
 
+/* cpsie i clears CPSR.I. The timer can then be taken. */
 static inline void irq_on(void)
 {
 	asm volatile("cpsie i" ::: "memory");

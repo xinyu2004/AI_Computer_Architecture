@@ -1,5 +1,12 @@
 #include "user.h"
 
+/*
+ * The shell stays resident. lookup runs before fork, so an unknown name
+ * never creates a child. exec loads the program and wait collects it.
+ * exit powers the machine off. The same source is linked for every CPU;
+ * user.h supplies that CPU's syscall register.
+ */
+
 static int streq(const char *a, const char *b)
 {
 	while (*a != '\0' && *a == *b) {
@@ -21,6 +28,7 @@ static void help(void)
 	sys_write(1, "sleep N     milliseconds\n", 24);
 }
 
+/* Unknown names return here. fork then exec then wait is the child path. */
 static void launch(const char *name, const char *arg)
 {
 	if (sys_lookup(name) != 0) {

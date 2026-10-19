@@ -7,6 +7,7 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef int int32_t;
 
+/* ra, sp, and s0-s11. swtch writes this block; sret is separate. */
 struct context {
 	uint32_t ra;
 	uint32_t sp;
@@ -85,6 +86,10 @@ void copy_page(uint32_t *dst, const uint32_t *src);
 
 extern char current_name[28];
 
+/*
+ * 144 bytes. x[0] is unused. sepc and sstatus follow the registers,
+ * then the kernel stack used when the trap came from U-mode.
+ */
 struct trapframe {
 	uint32_t x[32];
 	uint32_t sepc;

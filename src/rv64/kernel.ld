@@ -1,3 +1,8 @@
+/*
+ * Linked at the start of QEMU virt RAM. The kernel stack is 8KiB at
+ * the end of BSS. Registers and pointers in this image are 64 bits.
+ * _start is the first instruction.
+ */
 OUTPUT_ARCH("riscv")
 ENTRY(_start)
 

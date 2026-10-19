@@ -68,6 +68,12 @@ static void wr(uint32_t off, uint32_t val)
 	regs[off / 4u] = val;
 }
 
+	/*
+	 * Version 2. Negotiate an empty feature set, then point the device
+	 * at the descriptor table, the available ring, and the used ring.
+	 * The addresses are 64 bits, written as a low word and a high word.
+	 * Queue ready is register 0x44. DRIVER_OK lets the device run.
+	 */
 static int modern_setup(void)
 {
 	uint32_t high;
@@ -101,6 +107,11 @@ static int modern_setup(void)
 	return 0;
 }
 
+	/*
+	 * Version 1. The guest page size is 4096. The queue address
+	 * register takes the page number of the descriptor table. The
+	 * available and used rings follow it in the legacy layout.
+	 */
 static int legacy_setup(void)
 {
 	uint32_t maxq;
@@ -123,6 +134,11 @@ static volatile uint32_t *plic_word(uint32_t off)
 	return (volatile uint32_t *)(uintptr_t)(plic_base + off);
 }
 
+	/*
+	 * Priority 1, then the enable bit for this context, then a
+	 * threshold of 0 so every priority is delivered. The claim
+	 * register is read later in virtio_isr.
+	 */
 static void plic_enable(uint32_t irq)
 {
 	volatile uint32_t *prio = plic_word(irq * 4u);
@@ -206,6 +222,14 @@ uint32_t virtio_base(void)
 	return (uint32_t)(uintptr_t)regs;
 }
 
+	/*
+	 * Three descriptors: the 16-byte request, a 512-byte buffer the
+	 * device writes, and a one-byte status the device writes. QueueNotify
+	 * is register 0x50. SIE is cleared around the wait so a timer tick
+	 * does not run while the used index is being watched. On this board
+	 * the device finishes the request inside that notify write, and wfi
+	 * returns when the external interrupt is pending.
+	 */
 int virtio_read(uint32_t sector_no, void *dst)
 {
 	uint16_t idx;

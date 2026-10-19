@@ -108,6 +108,12 @@ static int elf_load(const char *name, uint32_t *entry)
 	if (eh.ident[0] != 0x7f || eh.ident[1] != 'E' || eh.ident[2] != 'L' ||
 	    eh.ident[3] != 'F')
 		return -1;
+	/*
+	 * ELF64, little-endian. Machine 243 is RISC-V. A program header
+	 * is 56 bytes, and flags comes before offset. Type 1 is a LOAD
+	 * segment. Bytes are copied through the physical address of the
+	 * user page. fence.i makes the new instructions visible.
+	 */
 	if (eh.ident[4] != 2 || eh.ident[5] != 1)
 		return -1;
 	if (eh.machine != 243 || eh.phentsize != 56)
@@ -142,6 +148,11 @@ static int elf_load(const char *name, uint32_t *entry)
 	return 0;
 }
 
+	/*
+	 * The disk is found, the directory is read, and the user window is
+	 * mapped. sh is loaded at 0x10000. The timer is armed, then sret
+	 * enters the shell with the stack at 0x81000.
+	 */
 void shell_start(const struct fdt_info *fdt)
 {
 	uint32_t entry;
@@ -199,6 +210,11 @@ static int write_u64(uint32_t va, uint64_t value)
 	return copy_out(va, &value, 8);
 }
 
+	/*
+	 * Strings go at the top of the user stack, then an argv array of
+	 * 8-byte pointers. sp is aligned to 16. a0 will be argc and a1
+	 * will be that array.
+	 */
 static int place_args(const char *name, const char *arg, uint32_t *argc,
 		      uint32_t *argv, uint32_t *sp_out)
 {
@@ -232,6 +248,10 @@ static int place_args(const char *name, const char *arg, uint32_t *argc,
 	return 0;
 }
 
+	/*
+	 * a0 and a1 are argc and argv. The pointers are 64 bits. SPP clear
+	 * selects U-mode on sret. SPIE and SUM match user_enter.
+	 */
 static void fill_child_frame(struct trapframe *tf, uint32_t entry, uint32_t sp,
 			     uint32_t argc, uint32_t argv)
 {
@@ -251,6 +271,11 @@ static void fill_child_frame(struct trapframe *tf, uint32_t entry, uint32_t sp,
 	tf->sstatus = sstatus;
 }
 
+	/*
+	 * One page, 512 words of 64 bits, from the shell stack at 0x80000
+	 * into child_stack. The shell's code pages are saved so exec can
+	 * put them back. The child does not run until exec calls swtch.
+	 */
 static int sys_fork(void)
 {
 	if (have_child)
@@ -261,6 +286,12 @@ static int sys_fork(void)
 	return 1;
 }
 
+	/*
+	 * The new program replaces the user code. swtch saves the shell
+	 * and resumes child_start, which srets into that program. The
+	 * child's exit swtch's back to the instruction after swtch, and
+	 * the saved shell pages are copied back. sh is not read again.
+	 */
 static int sys_exec(struct trapframe *parent, const char *name, const char *arg)
 {
 	uint32_t entry;
@@ -332,6 +363,12 @@ static int sys_read(uint32_t va, uint32_t len)
 	return n;
 }
 
+	/*
+	 * a7 (x17) is the number, still the syscall register on RV64.
+	 * a0-a2 are the arguments. The return value goes back in a0.
+	 * sepc points at the ecall, so adding 4 resumes at the next
+	 * instruction.
+	 */
 void syscall(struct trapframe *tf)
 {
 	uint32_t n = tf->x[17];

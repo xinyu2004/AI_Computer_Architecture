@@ -108,6 +108,12 @@ static int elf_load(const char *name, uint64_t *entry)
 	if (eh.ident[0] != 0x7f || eh.ident[1] != 'E' || eh.ident[2] != 'L' ||
 	    eh.ident[3] != 'F')
 		return -1;
+	/*
+	 * ELF64, little-endian. Machine 183 is AArch64. A program header
+	 * is 56 bytes, and flags comes before offset. Type 1 is a LOAD
+	 * segment. Bytes are copied through the physical address of the
+	 * user page.
+	 */
 	if (eh.ident[4] != 2 || eh.ident[5] != 1)
 		return -1;
 	if (eh.machine != 183 || eh.phentsize != 56)
@@ -143,6 +149,11 @@ static int elf_load(const char *name, uint64_t *entry)
 	return 0;
 }
 
+	/*
+	 * The disk is found, the directory is read, and the user window is
+	 * mapped. sh is loaded at 0x10000. The timer is armed, then eret
+	 * enters the shell with the stack at 0x81000.
+	 */
 void shell_start(const struct fdt_info *fdt)
 {
 	uint64_t entry;
@@ -200,6 +211,11 @@ static int write_u64(uint64_t va, uint64_t value)
 	return copy_out(va, &value, 8);
 }
 
+	/*
+	 * Strings go at the top of the user stack, then the argv pointer
+	 * array. Each pointer is 8 bytes. AAPCS64 wants sp 16-byte aligned,
+	 * so the pointer array is padded out to a multiple of 16.
+	 */
 static int place_args(const char *name, const char *arg, uint64_t *argc,
 		      uint64_t *argv, uint64_t *sp_out)
 {
@@ -237,6 +253,11 @@ static int place_args(const char *name, const char *arg, uint64_t *argc,
 	return 0;
 }
 
+	/*
+	 * x0 and x1 are argc and argv. The pointers are 8 bytes, and
+	 * place_args keeps SP_EL0 16-byte aligned. SPSR 0 is EL0t.
+	 * ELR_EL1 is the ELF entry.
+	 */
 static void fill_child_frame(uint64_t entry, uint64_t sp, uint64_t argc,
 			     uint64_t argv)
 {
@@ -251,6 +272,11 @@ static void fill_child_frame(uint64_t entry, uint64_t sp, uint64_t argc,
 	child_tf.spsr = 0;
 }
 
+	/*
+	 * One page, 512 words of 64 bits, from the shell stack at 0x80000
+	 * into child_stack. The shell's code pages are saved so exec can
+	 * put them back. The child does not run until exec calls swtch.
+	 */
 static int sys_fork(void)
 {
 	if (have_child)
@@ -261,6 +287,13 @@ static int sys_fork(void)
 	return 1;
 }
 
+	/*
+	 * The new program replaces the user code. swtch saves the shell
+	 * and resumes child_start, which erets into that program. The
+	 * child's exit swtch's back to the instruction after swtch, and
+	 * the saved shell pages are copied back. sh is not read again.
+	 * Both tasks stay at EL1 between the two returns.
+	 */
 static int sys_exec(const char *name, const char *arg)
 {
 	uint64_t entry;
@@ -331,6 +364,11 @@ static int sys_read(uint64_t va, uint64_t len)
 	return n;
 }
 
+	/*
+	 * x8 is the number. x0-x2 are the arguments. The return value
+	 * goes back in x0. ELR_EL1 already addresses the next instruction,
+	 * so it is left alone.
+	 */
 void syscall(struct trapframe *tf)
 {
 	uint64_t n = tf->x[8];

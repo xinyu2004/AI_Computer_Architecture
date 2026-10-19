@@ -15,10 +15,20 @@ trapframe:
 .globl trap_entry
 .balign 4
 trap_entry:
+	/*
+	 * Swap a0 with sscratch. Zero means the trap came from the kernel,
+	 * and the old a0 is put back. A user trap leaves the trapframe
+	 * pointer in a0 and branches to from_user.
+	 */
 	csrrw a0, sscratch, a0
 	bnez a0, from_user
 	csrrw a0, sscratch, a0
 
+	/*
+	 * Kernel frame, 280 bytes, eight bytes per register. x1 is at 8,
+	 * sp at 16, sepc at 256, sstatus at 264. x0 is not stored.
+	 * sscratch stays 0, so a nested trap takes this path again.
+	 */
 	addi sp, sp, -280
 	sd t0, 40(sp)
 	addi t0, sp, 280
@@ -95,6 +105,12 @@ trap_entry:
 	addi sp, sp, 280
 	sret
 
+	/*
+	 * User frame. a0 is the trapframe. The old a0 was left in sscratch
+	 * and is written at offset 80. kernel_sp at offset 272 becomes sp
+	 * for trap_handler. sscratch is then cleared so a nested trap takes
+	 * the kernel path. sret restores sepc, sstatus, and the user registers.
+	 */
 from_user:
 	sd ra, 8(a0)
 	sd sp, 16(a0)
@@ -174,6 +190,12 @@ from_user:
 	ld a0, 80(a0)
 	sret
 
+/*
+ * a0 is the first user instruction. a1 is the user stack.
+ * SPP cleared means sret enters U-mode. SPIE set means that return
+ * turns interrupts on, so the timer keeps ticking at the prompt.
+ * SUM (bit 18) lets S-mode touch user pages while a syscall runs.
+ */
 .globl user_enter
 user_enter:
 	la t0, trapframe

@@ -40,6 +40,11 @@ static uint8_t user_stack[4096] __attribute__((aligned(4096)));
 static uint8_t saved_code[USER_CODE_PAGES][4096];
 static uint8_t *active_stack;
 
+	/*
+	 * vpn1 is va[31:22]. A present root entry names a leaf table: the
+	 * physical page number is shifted back out of bits [31:10]. A new
+	 * table is recorded as PPN << 10 with the V bit.
+	 */
 static uint32_t *leaf_for(uint32_t vpn1)
 {
 	uint32_t *table;
@@ -55,6 +60,7 @@ static uint32_t *leaf_for(uint32_t vpn1)
 	return table;
 }
 
+	/* vpn0 is va[21:12]. The leaf stores the physical page the same way. */
 static int map_page(uint32_t va, uint32_t pa, uint32_t flags)
 {
 	uint32_t vpn1 = va >> 22;
@@ -80,6 +86,11 @@ static int map_range(uint32_t start, uint32_t end, uint32_t flags)
 	return 0;
 }
 
+	/*
+	 * Identity map: virtual address equals physical address, so the
+	 * pointers C already holds stay valid when satp is written. The
+	 * kernel pages are executable. Device pages are not.
+	 */
 void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio, uint32_t test,
 	    uint32_t plic)
 {
@@ -168,6 +179,11 @@ uint32_t vm_user_pa(uint32_t va)
 	return 0;
 }
 
+	/*
+	 * satp bit 31 selects Sv32. The low bits are the root table's
+	 * physical page number. sfence.vma drops translations cached
+	 * from before the write.
+	 */
 void vm_on(void)
 {
 	uint32_t satp = (1u << 31) | ((uint32_t)root >> 12);

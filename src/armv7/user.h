@@ -1,6 +1,11 @@
 #ifndef USER_H
 #define USER_H
 
+/*
+ * svc #0. r7 is the number, r0-r2 are the arguments, and the kernel
+ * returns in r0. The numbers are exit, write, read, exec, list, fork,
+ * wait, sleep, lookup.
+ */
 static inline int syscall(int num, int a, int b, int c)
 {
 	register int r0 asm("r0") = a;

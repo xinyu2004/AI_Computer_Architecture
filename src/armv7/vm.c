@@ -42,6 +42,11 @@ static uint8_t user_stack[4096] __attribute__((aligned(4096)));
 static uint8_t saved_code[USER_CODE_PAGES][4096];
 static uint8_t *active_stack;
 
+	/*
+	 * The L1 index is va[31:20], a 1MiB section. Bits [1:0] equal to 1
+	 * mean the entry names a second-level table of 4KiB pages. The
+	 * table address is 1KiB-aligned, so the low 10 bits hold the type.
+	 */
 static uint32_t *l2_for(uint32_t index)
 {
 	uint32_t desc = l1[index];
@@ -56,6 +61,7 @@ static uint32_t *l2_for(uint32_t index)
 	return table;
 }
 
+	/* The L2 index is va[19:12]. A small page stores the physical page. */
 static int map_page(uint32_t va, uint32_t pa, uint32_t flags)
 {
 	uint32_t *table = l2_for(va >> 20);
@@ -163,6 +169,13 @@ uint32_t vm_user_pa(uint32_t va)
 	return 0;
 }
 
+	/*
+	 * DACR client for domain 0, so the AP bits are checked. TTBCR.EAE
+	 * stays clear, which selects short descriptors. N is 0, so TTBR0
+	 * covers the whole 32-bit address. PD1 disables TTBR1. TTBR0 is
+	 * the physical address of the first-level table. SCTLR.M turns
+	 * translation on; C, I, A, TRE, and AFE stay clear.
+	 */
 void vm_on(void)
 {
 	uint32_t ttbr = (uint32_t)l1;

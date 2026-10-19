@@ -10,6 +10,7 @@ static uint32_t timer_interval;
 static uint32_t ticks_per_ms;
 static uint32_t timer_irq;
 
+	/* CNTPCT_EL0 is the 64-bit physical count. */
 static uint64_t cntpct(void)
 {
 	uint64_t now;
@@ -40,6 +41,12 @@ void trap_init(void)
 {
 }
 
+	/*
+	 * GICC_IAR is the id. 1022 and 1023 are spurious and must not be
+	 * EOI'd. 30 is the non-secure physical timer on this board, and
+	 * the virtio line is the SPI number plus 32. Every accepted id
+	 * is written back to GICC_EOIR.
+	 */
 void irq_handler(void)
 {
 	uint32_t id = gic_iar();
@@ -73,6 +80,11 @@ void timer_set_irq(uint32_t irq)
 	timer_irq = irq;
 }
 
+	/*
+	 * CNTP_CVAL_EL0 is the compare value. CNTP_CTL_EL0 bit 0 enables
+	 * the timer. gic_enable unmasks that line, and daifclr #2 lets
+	 * the CPU take it while the shell waits for a key.
+	 */
 void timer_arm(uint32_t timebase)
 {
 	uint64_t ctl = 1;

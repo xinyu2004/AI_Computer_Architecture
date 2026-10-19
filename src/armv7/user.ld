@@ -1,3 +1,7 @@
+/*
+ * User programs are linked at 0x10000, the same window the kernel maps.
+ * --nmagic keeps the file offset from being padded out to that address.
+ */
 OUTPUT_ARCH(arm)
 ENTRY(_start)
 

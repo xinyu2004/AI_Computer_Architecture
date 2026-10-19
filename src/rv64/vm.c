@@ -4,7 +4,6 @@
  * Sv39 is a three-level table of 4KiB pages. satp bits 63:60 are the mode,
  * 8 names Sv39, and the low bits are the physical page number of the root.
  * A leaf page-table entry holds the physical page and the permission bits.
- * A leaf page-table entry holds the physical page and the permission bits.
  * There is no GDT and no TSS. The kernel is mapped at its own physical
  * address, so pointers stay valid after paging is turned on.
  *
@@ -46,6 +45,11 @@ static uint64_t pte_pa(uint64_t pa)
 	return (pa >> 12) << 10;
 }
 
+	/*
+	 * A present entry names the next table: the physical page number
+	 * sits in bits [53:10]. A new table is recorded the same way, with
+	 * only the V bit, so the walk continues. Sv39 uses three levels.
+	 */
 static uint64_t *next_table(uint64_t *table, uint32_t idx)
 {
 	uint64_t pte = table[idx];
@@ -60,6 +64,10 @@ static uint64_t *next_table(uint64_t *table, uint32_t idx)
 	return child;
 }
 
+	/*
+	 * VPN[2] is va[38:30], VPN[1] is va[29:21], VPN[0] is va[20:12].
+	 * The leaf stores the physical page and the permission bits.
+	 */
 static int map_page(uint32_t va, uint32_t pa, uint64_t flags)
 {
 	uint64_t *mid = next_table(root, (va >> 30) & 0x1ffu);
@@ -87,6 +95,11 @@ static int map_range(uint32_t start, uint32_t end, uint32_t flags)
 	return 0;
 }
 
+	/*
+	 * Identity map: virtual address equals physical address, so the
+	 * pointers C already holds stay valid when satp is written. The
+	 * kernel pages are executable. Device pages are not.
+	 */
 void vm_init(uint32_t uart, const uint32_t *virtio, int nvirtio, uint32_t test,
 	    uint32_t plic)
 {
@@ -175,6 +188,11 @@ uint32_t vm_user_pa(uint32_t va)
 	return 0;
 }
 
+	/*
+	 * satp bits 63:60 are the mode. 8 selects Sv39. The low bits are
+	 * the root table's physical page number. sfence.vma drops
+	 * translations cached from before the write.
+	 */
 void vm_on(void)
 {
 	uint64_t satp = (8ull << 60) | ((uint64_t)(uintptr_t)root >> 12);

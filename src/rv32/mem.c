@@ -1,5 +1,10 @@
 #include "rv32.h"
 
+/*
+ * Freestanding copies. copy_page moves one 4KiB page as 1024 words of
+ * 32 bits. fork uses it on the user stack page at 0x80000.
+ */
+
 void *memset(void *dst, int c, unsigned n)
 {
 	uint8_t *d = dst;

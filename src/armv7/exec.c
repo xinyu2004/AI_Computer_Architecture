@@ -108,6 +108,12 @@ static int elf_load(const char *name, uint32_t *entry)
 	if (eh.ident[0] != 0x7f || eh.ident[1] != 'E' || eh.ident[2] != 'L' ||
 	    eh.ident[3] != 'F')
 		return -1;
+	/*
+	 * ELF32, little-endian. Machine 40 is ARM. A program header is
+	 * 32 bytes, and type 1 is a LOAD segment. Bytes are copied
+	 * through the physical address of the user page. The instruction
+	 * barrier makes the new code visible to the fetch.
+	 */
 	if (eh.ident[4] != 1 || eh.ident[5] != 1)
 		return -1;
 	if (eh.machine != 40 || eh.phentsize != 32)
@@ -143,6 +149,11 @@ static int elf_load(const char *name, uint32_t *entry)
 	return 0;
 }
 
+	/*
+	 * The disk is found, the directory is read, and the user window is
+	 * mapped. sh is loaded at 0x10000. The timer is armed, then the
+	 * CPU returns to user mode with the stack at 0x81000.
+	 */
 void shell_start(const struct fdt_info *fdt)
 {
 	uint32_t entry;
@@ -200,6 +211,11 @@ static int write_u32(uint32_t va, uint32_t value)
 	return copy_out(va, &value, 4);
 }
 
+	/*
+	 * Strings go at the top of the user stack, then the argv pointer
+	 * array. AAPCS wants sp 8-byte aligned, so the pointer array is
+	 * padded out to a multiple of 8.
+	 */
 static int place_args(const char *name, const char *arg, uint32_t *argc,
 		      uint32_t *argv, uint32_t *sp_out)
 {
@@ -237,6 +253,10 @@ static int place_args(const char *name, const char *arg, uint32_t *argc,
 	return 0;
 }
 
+	/*
+	 * r0 and r1 are argc and argv, the AAPCS argument registers.
+	 * SPSR 0x10 is user mode. The return pc is the ELF entry.
+	 */
 static void fill_child_frame(uint32_t entry, uint32_t sp, uint32_t argc,
 			     uint32_t argv)
 {
@@ -252,6 +272,11 @@ static void fill_child_frame(uint32_t entry, uint32_t sp, uint32_t argc,
 	child_tf.spsr = 0x10;
 }
 
+	/*
+	 * One page, 1024 words, from the shell stack at 0x80000 into
+	 * child_stack. The shell's code pages are saved so exec can put
+	 * them back. The child does not run until exec calls swtch.
+	 */
 static int sys_fork(void)
 {
 	if (have_child)
@@ -262,6 +287,13 @@ static int sys_fork(void)
 	return 1;
 }
 
+	/*
+	 * The new program replaces the user code. swtch saves the shell
+	 * and resumes child_start, which returns to user mode in that
+	 * program. The child's exit swtch's back to the instruction after
+	 * swtch, and the saved shell pages are copied back. sh is not
+	 * read again. Both tasks stay in SVC between the two returns.
+	 */
 static int sys_exec(const char *name, const char *arg)
 {
 	uint32_t entry;
@@ -332,6 +364,11 @@ static int sys_read(uint32_t va, uint32_t len)
 	return n;
 }
 
+	/*
+	 * r7 is the number. r0-r2 are the arguments. The return value
+	 * goes back in r0. LR_svc already addresses the next instruction,
+	 * so the pc in the frame is left alone.
+	 */
 void syscall(struct trapframe *tf)
 {
 	uint32_t n = tf->r[7];

@@ -1,3 +1,7 @@
+/*
+ * text_offset in the Image header is 0x80000, so this kernel is linked
+ * at 0x40080000. One 8KiB EL1 stack sits in BSS, aligned to 16 bytes.
+ */
 OUTPUT_ARCH(aarch64)
 ENTRY(_start)
 

@@ -41,6 +41,11 @@ static int streq(const char *a, const char *b)
 	return *a == '\0' && *b == '\0';
 }
 
+	/*
+	 * Sector 0 is little-endian: magic 0x46533256, then the file count.
+	 * Sector 1 holds up to eight directory entries. Each entry is a
+	 * 28-byte name, a byte offset, and a length.
+	 */
 int fs_init(void)
 {
 	uint8_t sec[512];
@@ -64,6 +69,12 @@ int fs_init(void)
 	return 0;
 }
 
+/*
+ * A hit copies the cached sector and does not touch the device.
+ * A miss replaces the next of the 32 slots and asks virtio for
+ * that sector. The second read of the same sector takes the hit.
+ * noinline keeps this function a place to stop.
+ */
 __attribute__((noinline))
 static int bread(uint32_t sector_no, void *dst)
 {
@@ -87,6 +98,10 @@ static int bread(uint32_t sector_no, void *dst)
 }
 
 __attribute__((noinline))
+	/*
+	 * The matching entry's byte offset divided by 512 is the sector
+	 * number left in name_block.
+	 */
 static int lookup(const char *name)
 {
 	int i;

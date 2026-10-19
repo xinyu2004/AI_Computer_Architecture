@@ -80,6 +80,11 @@ static void wr(uint32_t off, uint32_t val)
 	regs[off / 4u] = val;
 }
 
+	/*
+	 * Version 2. Negotiate an empty feature set, then give the device
+	 * the three addresses inside the one queue block. Queue ready is
+	 * register 0x44. DRIVER_OK lets the device run.
+	 */
 static int modern_setup(void)
 {
 	uint32_t high;
@@ -113,6 +118,12 @@ static int modern_setup(void)
 	return 0;
 }
 
+	/*
+	 * Version 1, which is what this virt board presents. Guest page
+	 * size 4096, queue align 4. Register 0x40 takes the page number
+	 * of the whole queue block. The used ring begins just after the
+	 * available ring inside that block.
+	 */
 static int legacy_setup(void)
 {
 	uint32_t maxq;
@@ -190,6 +201,14 @@ uint32_t virtio_irq(void)
 	return disk_irq;
 }
 
+	/*
+	 * Three descriptors: the 16-byte request, a 512-byte buffer the
+	 * device writes, and a one-byte status the device writes.
+	 * QueueNotify is register 0x50. IRQs are masked across that write
+	 * because the used index advances inside it, and wfi with I set
+	 * does not wake on this CPU. irq_on afterwards lets the handler
+	 * claim the pending line.
+	 */
 int virtio_read(uint32_t sector_no, void *dst)
 {
 	uint16_t idx;

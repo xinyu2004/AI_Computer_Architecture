@@ -1,6 +1,11 @@
 #ifndef USER_H
 #define USER_H
 
+/*
+ * ecall. a7 is the number, a0-a2 are the arguments, and the kernel
+ * returns in a0. The same wrappers build for RV32 and RV64. The numbers
+ * are exit, write, read, exec, list, fork, wait, sleep, lookup.
+ */
 static inline long syscall(long num, long a, long b, long c)
 {
 	register long a0 asm("a0") = a;

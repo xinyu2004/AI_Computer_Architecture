@@ -1,5 +1,11 @@
 #include "user.h"
 
+/*
+ * argv[1] is the string placed on the user stack by exec. A second
+ * echo of the same text reads the program again; the kernel's sector
+ * cache is what makes that read hit.
+ */
+
 int main(int argc, char **argv)
 {
 	const char *s;

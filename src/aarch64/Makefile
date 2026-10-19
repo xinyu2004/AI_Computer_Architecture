@@ -1,5 +1,10 @@
 # AArch64 kernel for Cortex-A57. User programs are built here so they
 # do not replace the ARMv7 or RISC-V ELF files.
+# -mgeneral-regs-only keeps the kernel off the FP registers.
+# -mstrict-align: with the MMU off, memory is Device and an unaligned
+# store faults. kernel.bin is the Image QEMU loads. kernel.elf is for
+# the debugger. --nmagic keeps a user ELF from being padded out to its
+# link address.
 CROSS ?= aarch64-linux-gnu-
 CC := $(CROSS)gcc
 

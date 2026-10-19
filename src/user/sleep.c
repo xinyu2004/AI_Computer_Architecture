@@ -1,5 +1,7 @@
 #include "user.h"
 
+/* The argument is a number of milliseconds. sys_sleep waits that long. */
+
 int main(int argc, char **argv)
 {
 	const char *s;

@@ -25,6 +25,12 @@ static void wr(uint32_t off, uint32_t val)
 	uart[off / 4u] = val;
 }
 
+	/*
+	 * UARTCR off, then the integer and fractional baud divisors.
+	 * LCR_H: WLEN is bits [6:5] = 11 for 8 data bits, FEN is bit 4.
+	 * IMSC stays clear, so the UART itself raises no interrupt.
+	 * UARTCR then enables the UART, the transmitter, and the receiver.
+	 */
 void uart_init(uint32_t base)
 {
 	uart = (volatile uint32_t *)(uintptr_t)base;
@@ -36,6 +42,11 @@ void uart_init(uint32_t base)
 	wr(UARTCR, (1u << 0) | (1u << 8) | (1u << 9));
 }
 
+	/*
+	 * Bit 4 of FR is RXFE. The prompt waits here with IRQs enabled, so
+	 * a timer tick can still be taken. The receive FIFO is polled
+	 * again after each wake.
+	 */
 int uart_getc(void)
 {
 	while ((rd(UARTFR) & FR_RXFE) != 0) {

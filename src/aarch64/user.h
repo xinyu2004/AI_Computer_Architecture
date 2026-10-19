@@ -1,6 +1,11 @@
 #ifndef USER_H
 #define USER_H
 
+/*
+ * svc #0. x8 is the number, x0-x2 are the arguments, and the kernel
+ * returns in x0. Pointers are passed as 64-bit values. The numbers are
+ * exit, write, read, exec, list, fork, wait, sleep, lookup.
+ */
 static inline long syscall(long num, long a, long b, long c)
 {
 	register long x0 asm("x0") = a;

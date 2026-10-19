@@ -1,3 +1,7 @@
+/*
+ * Linked at the start of QEMU virt RAM. The kernel stack is 8KiB at
+ * the end of BSS. _start is the first instruction.
+ */
 OUTPUT_ARCH("riscv")
 ENTRY(_start)
 

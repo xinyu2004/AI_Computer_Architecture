@@ -1,5 +1,7 @@
 #include "user.h"
 
+/* One list syscall. The kernel writes the directory names into buf. */
+
 int main(void)
 {
 	char buf[128];

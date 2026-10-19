@@ -25,6 +25,14 @@ void gic_init(uint32_t dist_base, uint32_t cpu_base)
 	cpu[1] = 0xff;
 }
 
+	/*
+	 * IGROUPR at 0x80: a set bit marks the line Group 1. IPRIORITYR at
+	 * 0x400 stores one byte per interrupt; 0x80 is a mid priority.
+	 * ITARGETSR at 0x800 names CPU 0, and only an SPI (id 32 and up)
+	 * has a target byte. ISENABLER at 0x100 is what lets the line
+	 * through. This board's GIC is the same GICv2 the tree describes
+	 * for the Cortex-A15.
+	 */
 void gic_enable(uint32_t irq)
 {
 	volatile uint8_t *base = (volatile uint8_t *)dist;
@@ -36,11 +44,13 @@ void gic_enable(uint32_t irq)
 	dist[(0x100u + (irq / 32u) * 4u) / 4u] = 1u << (irq % 32u);
 }
 
+	/* GICC_IAR at 0x0c. The low 10 bits are the interrupt id. */
 uint32_t gic_iar(void)
 {
 	return cpu[0x0cu / 4u];
 }
 
+	/* GICC_EOIR at 0x10. The id written here is the one IAR returned. */
 void gic_eoi(uint32_t irq)
 {
 	cpu[0x10u / 4u] = irq;

@@ -8,6 +8,7 @@ typedef unsigned long long uint64_t;
 typedef int int32_t;
 typedef unsigned long uintptr_t;
 
+/* Callee-saved bank, x19-x30 and sp. swtch writes these at EL1. */
 struct context {
 	uint64_t x19;
 	uint64_t x20;
@@ -24,6 +25,10 @@ struct context {
 	uint64_t sp;
 };
 
+/*
+ * 272 bytes: x0-x30, then SP_EL0, ELR_EL1, and SPSR_EL1. That is the
+ * frame svc_entry builds.
+ */
 struct trapframe {
 	uint64_t x[31];
 	uint64_t sp;
@@ -114,6 +119,7 @@ static inline void irq_off(void)
 	asm volatile("msr daifset, #2" ::: "memory");
 }
 
+/* daifclr immediate 2 clears the I mask. The timer can then be taken. */
 static inline void irq_on(void)
 {
 	asm volatile("msr daifclr, #2" ::: "memory");

@@ -100,6 +100,12 @@ static int read_reg(const uint8_t *val, uint32_t len, uint32_t ac, uint32_t *out
 	return 0;
 }
 
+	/*
+	 * The header is big-endian. Magic is 0xd00dfeed. off_struct is the
+	 * token stream and off_strings is the property-name table. The
+	 * walk keeps a stack of #address-cells and #size-cells so a node's
+	 * reg property is read with the parent's sizes.
+	 */
 int fdt_parse(const void *dtb, struct fdt_info *out)
 {
 	const uint8_t *b = dtb;

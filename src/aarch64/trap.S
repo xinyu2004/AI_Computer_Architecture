@@ -1,14 +1,22 @@
 /*
  * VBAR_EL1 points here. Each slot is 128 bytes. svc from EL0 is the
  * lower-EL AArch64 sync slot. ELR_EL1 already points at the instruction
- * after svc. An IRQ returns to ELR as it
- * stands. The same IRQ entry serves EL1 and EL0.
+ * after svc. An IRQ returns to ELR as it stands. The same IRQ entry
+ * serves EL1 and EL0.
  */
 .macro ventry label
 .balign 128
 	b \label
 .endm
 
+	/*
+	 * Sixteen slots, four groups of four: current EL with SP0, current
+	 * EL with SPx, lower EL AArch64, lower EL AArch32. Inside a group
+	 * the order is sync, IRQ, FIQ, SError. Slot 5 (offset 0x280) is an
+	 * IRQ taken in the kernel. Slot 8 (offset 0x400) is svc from EL0.
+	 * Slot 9 (offset 0x480) is an IRQ taken from EL0. VBAR_EL1 requires
+	 * 2KiB alignment.
+	 */
 .section .text
 .balign 2048
 .globl vector_table
@@ -34,6 +42,10 @@ fault_entry:
 	bl fault_handler
 	b .
 
+	/*
+	 * 192 bytes of caller-saved registers on the current stack. ELR_EL1
+	 * already points where eret should return, so it is left unchanged.
+	 */
 irq_entry:
 	sub sp, sp, #192
 	stp x0, x1, [sp, #0]
@@ -62,6 +74,12 @@ irq_entry:
 	add sp, sp, #192
 	eret
 
+	/*
+	 * 272-byte frame: x0-x30, then SP_EL0 at 248, ELR_EL1 at 256, and
+	 * SPSR_EL1 at 264. ESR_EL1 bits [31:26] are the exception class.
+	 * 0x15 is an svc issued from AArch64. ELR_EL1 already points at
+	 * the instruction after svc, so it is stored as it stands.
+	 */
 svc_entry:
 	sub sp, sp, #272
 	stp x0, x1, [sp, #0]
@@ -117,6 +135,10 @@ svc_entry:
 	add sp, sp, #272
 	eret
 
+	/*
+	 * x0 is the first user instruction, x1 is the user stack. SPSR_EL1
+	 * zero is EL0t. eret copies it into PSTATE and jumps to ELR_EL1.
+	 */
 .globl user_enter
 user_enter:
 	msr sp_el0, x1
@@ -124,6 +146,11 @@ user_enter:
 	msr spsr_el1, xzr
 	eret
 
+	/*
+	 * child_tf holds the program started by exec. SP_EL0 is at 248,
+	 * ELR_EL1 at 256, SPSR_EL1 at 264. x9 is the pointer into the frame
+	 * and is cleared before eret so the user sees it as zero.
+	 */
 .globl user_resume
 user_resume:
 	ldr x9, =child_tf

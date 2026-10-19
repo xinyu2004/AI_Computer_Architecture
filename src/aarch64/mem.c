@@ -1,5 +1,10 @@
 #include "aarch64.h"
 
+/*
+ * Freestanding copies. copy_page moves one 4KiB page as 512 words of
+ * 64 bits. fork uses it on the user stack page at 0x80000.
+ */
+
 void *memset(void *dst, int c, unsigned n)
 {
 	uint8_t *d = dst;
