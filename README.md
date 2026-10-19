@@ -30,6 +30,8 @@ Names that do not say what they do:
 
 - [Instructions in the 80386 kernel](docs/en/i386_instructions.md)
 - [Instructions in the RV32 kernel](docs/en/rv32_instructions.md)
+- [Instructions in the ARMv7 kernel](docs/en/armv7_instructions.md)
+- [Instructions in the AArch64 kernel](docs/en/aarch64_instructions.md)
 
 ## What it looks like
 

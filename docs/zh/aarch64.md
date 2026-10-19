@@ -37,3 +37,5 @@ $
 | 时钟 | `traps.c` | `CNTP_CVAL_EL0`。GIC 号这次仍是 30。 |
 | 系统调用 | `trap.S` | `svc` 来自 EL0。`ESR_EL1` 的 EC 是 `0x15`，调用号在 `x8`。 |
 | 复制一页 | `mem.c` | `copy_page` 拷 512 个 64 位字，仍是 4KiB。 |
+
+名字本身看不出作用的指令在[一页](aarch64_instructions.md)里。ARMv7 的名字在 [ARMv7 那一页](armv7_instructions.md)。80386 的名字在 [80386 那一页](i386_instructions.md)。

@@ -41,3 +41,5 @@ The full `ls`, `echo`, `nosuch`, `sleep`, and `exit` transcript is in [the stops
 | Timer | `traps.c` | `CNTP_CVAL` is written before the prompt. The GIC id comes from the device tree and is 30 on this boot. |
 | Task switch | `swtch.S` | `exec` saves the shell and enters the child. Both tasks stay in SVC. |
 | Copy one page | `mem.c` | `copy_page` copies 1024 32-bit words, 4KiB. |
+
+Instruction names that do not say what they do are on [one page](armv7_instructions.md). The 80386 names are on [the 80386 page](i386_instructions.md). The RV32 names are on [the RV32 page](rv32_instructions.md).

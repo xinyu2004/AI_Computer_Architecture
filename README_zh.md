@@ -28,6 +28,8 @@
 
 - [80386 内核里的指令](docs/zh/i386_instructions.md)
 - [RV32 内核里的指令](docs/zh/rv32_instructions.md)
+- [ARMv7 内核里的指令](docs/zh/armv7_instructions.md)
+- [AArch64 内核里的指令](docs/zh/aarch64_instructions.md)
 
 ## 看起来是什么样
 

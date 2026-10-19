@@ -27,3 +27,15 @@
 | SIE | Supervisor interrupt enable，监管者中断使能 | `sstatus` 第 1 位。置位后可以接受监管者中断。 |
 | STIE | Supervisor timer interrupt enable，监管者时钟中断使能 | `sie` 第 5 位。置位后时钟中断可以进来。 |
 | 中断位 <sub>(RV32)</sub> | 这是中断，不是异常 | `scause` 的第 31 位。置位且低位等于 5，就是监管者时钟中断。 |
+
+## RV64 上搬动的位
+
+`src/rv64` 用的是上面这些指令。`sd` 和 `ld` 是 64 位的存储和加载。控制转移仍在这一页。下面这些域换了位置。
+
+| 域 | 在 RV64 上的位置 |
+| --- | --- |
+| `satp.MODE` | 第 63 到 60 位。值 8 是 Sv39，三级页表，每页 4KiB。RV32 上这个模式是第 31 位。 |
+| 中断位 | `scause` 的第 63 位。置位且低位等于 5 时，提示符上的值是 `0x8000000000000005`。RV32 上这一位是第 31 位。 |
+| `time` | 一个寄存器。RV32 上计数器是 `time` 和 `timeh`。 |
+| `stimecmp` | 一个寄存器，CSR `0x14d`。RV32 上比较值是 `stimecmp` 和 `stimecmph`。 |
+| STCE | `menvcfg` 的第 63 位，CSR `0x30a`。RV32 上这一位是 `menvcfgh` 的第 31 位。 |

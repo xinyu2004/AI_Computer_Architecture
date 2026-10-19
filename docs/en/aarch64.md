@@ -37,3 +37,5 @@ The boot stub places the image at `0x40080000`, already in EL1h, with the device
 | Timer | `traps.c` | `CNTP_CVAL_EL0`. The GIC id is still 30 on this boot. |
 | System call | `trap.S` | `svc` comes from EL0. The EC field of `ESR_EL1` is `0x15`, and the call number is in `x8`. |
 | Copy one page | `mem.c` | `copy_page` copies 512 64-bit words, still 4KiB. |
+
+Instruction names that do not say what they do are on [one page](aarch64_instructions.md). The ARMv7 names are on [the ARMv7 page](armv7_instructions.md). The 80386 names are on [the 80386 page](i386_instructions.md).

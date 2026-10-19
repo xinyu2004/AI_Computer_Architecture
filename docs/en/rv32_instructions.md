@@ -27,3 +27,15 @@ A smaller parenthetical mark sits in the first column. (RV32) is a mechanism of 
 | SIE | Supervisor interrupt enable | `sstatus` bit 1. Set: supervisor interrupts can be taken. |
 | STIE | Supervisor timer interrupt enable | `sie` bit 5. Set: the timer interrupt is allowed through. |
 | interrupt bit <sub>(RV32)</sub> | Interrupt, not an exception | Bit 31 of `scause`. Set, with the low bits equal to 5: the supervisor timer. |
+
+## What moves on RV64
+
+`src/rv64` uses the instructions above. `sd` and `ld` are the 64-bit store and load. The control transfers stay on this page. These fields move.
+
+| Field | Where it sits on RV64 |
+| --- | --- |
+| `satp.MODE` | Bits 63:60. The value 8 is Sv39, a three-level table of 4KiB pages. On RV32 the mode is bit 31. |
+| interrupt bit | Bit 63 of `scause`. Set, with the low bits equal to 5, the value at the prompt is `0x8000000000000005`. On RV32 that bit is bit 31. |
+| `time` | One register. On RV32 the counter is `time` and `timeh`. |
+| `stimecmp` | One register, CSR `0x14d`. On RV32 the compare value is `stimecmp` and `stimecmph`. |
+| STCE | Bit 63 of `menvcfg`, CSR `0x30a`. On RV32 that bit is bit 31 of `menvcfgh`. |

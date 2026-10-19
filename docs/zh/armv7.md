@@ -41,3 +41,5 @@ $
 | 时钟 | `traps.c` | `CNTP_CVAL` 在进提示符之前装好。GIC 号来自设备树，这次是 30。 |
 | 任务切换 | `swtch.S` | `exec` 保存 shell 并进入子进程。两个任务都留在 SVC。 |
 | 复制一页 | `mem.c` | `copy_page` 拷 1024 个 32 位字，共 4KiB。 |
+
+名字本身看不出作用的指令在[一页](armv7_instructions.md)里。80386 的名字在 [80386 那一页](i386_instructions.md)。RV32 的名字在 [RV32 那一页](rv32_instructions.md)。
