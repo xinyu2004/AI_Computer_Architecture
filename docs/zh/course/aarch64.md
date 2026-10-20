@@ -6,6 +6,8 @@
 
 启动是 `labs/aarch64/qemu/launch.sh`。UART 在这个终端里。F5 选 **AArch64**，停在 `entry.S` 的 `_start`，再下断点。断在函数上。地址以这次编译为准。
 
+图上这一列的铭牌是 [EL1](../aarch64_instructions.md#pstate) 和 [TTBR0_EL1](../aarch64_instructions.md#ttbr0-el1)。AArch64 是 ARMv8 的 64 位状态。见 [机制图](../mech.md)。
+
 这是另一份内核，不是 ARMv7 加一层条件编译。异常级、页表和系统寄存器都不共用。
 
 ## UART 上先看这段

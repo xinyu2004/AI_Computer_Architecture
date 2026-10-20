@@ -6,7 +6,7 @@
 
 ## What this chapter is for
 
-IRQ0 comes through the 8259 as vector `0x20` and enters `_timer_interrupt`. The handler saves registers, increments `jiffies`, writes the EOI, calls `do_timer`, and returns with `iret`. This gem5 run has no root disk, so task 1 calls `panic("Unable to mount root")` and spins. The first timer interrupt is taken from that spin. The interrupted code is in the kernel, so this tick does not call `_schedule`.
+IRQ0 comes through the 8259 as vector `0x20` and enters `_timer_interrupt`. The handler saves registers, increments `jiffies`, writes the EOI, calls `do_timer`, and returns with [`iret`](../i386_instructions.md#iret). This gem5 run has no root disk, so task 1 calls `panic("Unable to mount root")` and spins. The first timer interrupt is taken from that spin. The interrupted code is in the kernel, so this tick does not call `_schedule`. The four frames of the saved state are in the [mechanism pictures](../mech.md#stack).
 
 ## What to read
 

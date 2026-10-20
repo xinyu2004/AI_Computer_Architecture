@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="260" viewBox="0 0 880 260">
+  <style>
+    text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .use { fill: #dbeafe; stroke: #1e3a8a; }
+    .on { fill: #fee2e2; stroke: #b91c1c; }
+  </style>
+
+  <text class="h" x="24" y="28">EFLAGS, the whole register. Red is a bit the interrupt path writes, with the value</text>
+  <rect class="box" x="24" y="48" width="64" height="44" rx="4"/>
+  <text x="56" y="75" text-anchor="middle">CF 0</text>
+  <rect class="box" x="92" y="48" width="64" height="44" rx="4"/>
+  <text x="124" y="75" text-anchor="middle">1 = 1</text>
+  <rect class="box" x="160" y="48" width="64" height="44" rx="4"/>
+  <text x="192" y="75" text-anchor="middle">PF 2</text>
+  <rect class="box" x="228" y="48" width="64" height="44" rx="4"/>
+  <text x="260" y="75" text-anchor="middle">3 = 0</text>
+  <rect class="box" x="296" y="48" width="64" height="44" rx="4"/>
+  <text x="328" y="75" text-anchor="middle">AF 4</text>
+  <rect class="box" x="364" y="48" width="64" height="44" rx="4"/>
+  <text x="396" y="75" text-anchor="middle">5 = 0</text>
+  <rect class="box" x="432" y="48" width="64" height="44" rx="4"/>
+  <text x="464" y="75" text-anchor="middle">ZF 6</text>
+  <rect class="box" x="500" y="48" width="64" height="44" rx="4"/>
+  <text x="532" y="75" text-anchor="middle">SF 7</text>
+  <rect class="box" x="568" y="48" width="64" height="44" rx="4"/>
+  <text x="600" y="75" text-anchor="middle">TF 8</text>
+  <rect class="on" x="636" y="48" width="72" height="44" rx="4"/>
+  <text class="chg" x="672" y="75" text-anchor="middle">IF = 0</text>
+  <rect class="on" x="712" y="48" width="72" height="44" rx="4"/>
+  <text class="chg" x="748" y="75" text-anchor="middle">DF = 0</text>
+  <rect class="box" x="788" y="48" width="68" height="44" rx="4"/>
+  <text x="822" y="75" text-anchor="middle">OF 11</text>
+  <rect class="box" x="24" y="108" width="150" height="44" rx="4"/>
+  <text x="99" y="135" text-anchor="middle">IOPL 12-13</text>
+  <rect class="box" x="182" y="108" width="100" height="44" rx="4"/>
+  <text x="232" y="135" text-anchor="middle">NT 14</text>
+  <rect class="box" x="290" y="108" width="90" height="44" rx="4"/>
+  <text x="335" y="135" text-anchor="middle">15 = 0</text>
+  <rect class="box" x="388" y="108" width="100" height="44" rx="4"/>
+  <text x="438" y="135" text-anchor="middle">RF 16</text>
+  <rect class="box" x="496" y="108" width="100" height="44" rx="4"/>
+  <text x="546" y="135" text-anchor="middle">VM 17</text>
+  <rect class="box" x="604" y="108" width="252" height="44" rx="4"/>
+  <text x="730" y="135" text-anchor="middle">bits 18-31 reserved on the 386</text>
+  <text x="24" y="180">An interrupt gate writes bit 9, IF, as 0. cld at the start of _system_call writes bit 10, DF, as 0.</text>
+  <text x="24" y="208">The arithmetic flags are CF, PF, AF, ZF, SF, OF, at bits 0, 2, 4, 6, 7, and 11. iret writes the register back.</text>
+  <text class="s" x="24" y="236">Bit 1 always reads as 1. Boot code does not write TF, IOPL, NT, RF, or VM.</text>
+
+</svg>

@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1220" viewBox="0 0 880 1220">
+
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#1e3a8a"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .hw { fill: #dbeafe; stroke: #1e3a8a; }
+    .sw { fill: #fef3c7; stroke: #92400e; }
+  </style>
+
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">Frame 1. Before the gate, the state is still in the registers</text>
+    <rect class="box" x="24" y="52" width="200" height="44" rx="6"/>
+    <text x="124" y="79" text-anchor="middle">EFLAGS</text>
+    <rect class="box" x="236" y="52" width="140" height="44" rx="6"/>
+    <text x="306" y="79" text-anchor="middle">CS</text>
+    <rect class="box" x="388" y="52" width="140" height="44" rx="6"/>
+    <text x="458" y="79" text-anchor="middle">EIP</text>
+    <rect class="box" x="540" y="52" width="316" height="44" rx="6"/>
+    <text x="698" y="79" text-anchor="middle">stack top  SS:ESP</text>
+    <text x="24" y="128">From ring 3 to ring 0, the new SS:ESP comes from SS0 and ESP0 in the current TSS.</text>
+    <text x="24" y="156">The call number is in EAX. int 0x80 and vector 0x20 push no error code.</text>
+    <text class="s" x="24" y="188">Blue is the copy the CPU pushes. Yellow is the handler's own pushes. Red is written this step.</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,220)">
+    <text class="h" x="24" y="28">Frame 2. The CPU copies registers onto the stack. It grows downward</text>
+    <rect class="hw" x="24" y="48" width="640" height="40" rx="6"/>
+    <text x="40" y="73">user SS</text>
+    <text class="chg" x="220" y="73">copied from the user's SS</text>
+    <rect class="hw" x="24" y="96" width="640" height="40" rx="6"/>
+    <text x="40" y="121">user ESP</text>
+    <text class="chg" x="220" y="121">copied from the user's ESP</text>
+    <rect class="hw" x="24" y="144" width="640" height="40" rx="6"/>
+    <text x="40" y="169">EFLAGS</text>
+    <text class="chg" x="220" y="169">copied from EFLAGS</text>
+    <rect class="hw" x="24" y="192" width="640" height="40" rx="6"/>
+    <text x="40" y="217">CS</text>
+    <text class="chg" x="220" y="217">copied from CS</text>
+    <rect class="hw" x="24" y="240" width="640" height="40" rx="6"/>
+    <text x="40" y="265">EIP</text>
+    <text class="chg" x="220" y="265">copied from EIP     SS:ESP points here</text>
+    <text x="24" y="308">The top two slots exist only when privilege changes. A ring-0 timer has EFLAGS, CS, EIP.</text>
+    <text class="s" x="24" y="336">An interrupt gate also writes EFLAGS.IF = 0. The trap gate int 0x80 leaves IF as it was.</text>
+  </g>
+  <g class="frame" id="f2" transform="translate(0,580)">
+    <text class="h" x="24" y="28">Frame 3. _system_call pushes these. EAX stays the call number</text>
+    <rect class="sw" x="24" y="52" width="200" height="36" rx="6"/>
+    <text class="chg" x="124" y="75" text-anchor="middle">EBX</text>
+    <rect class="sw" x="236" y="52" width="180" height="36" rx="6"/>
+    <text class="chg" x="326" y="75" text-anchor="middle">ECX</text>
+    <rect class="sw" x="428" y="52" width="180" height="36" rx="6"/>
+    <text class="chg" x="518" y="75" text-anchor="middle">EDX</text>
+    <rect class="sw" x="24" y="100" width="180" height="36" rx="6"/>
+    <text class="chg" x="114" y="123" text-anchor="middle">FS</text>
+    <rect class="sw" x="216" y="100" width="180" height="36" rx="6"/>
+    <text class="chg" x="306" y="123" text-anchor="middle">ES</text>
+    <rect class="sw" x="408" y="100" width="200" height="36" rx="6"/>
+    <text class="chg" x="508" y="123" text-anchor="middle">DS</text>
+    <rect class="hw" x="24" y="148" width="584" height="36" rx="6"/>
+    <text x="316" y="171" text-anchor="middle">under them, frame 2: EFLAGS, CS, EIP</text>
+    <text x="24" y="214">After the pushes, the registers themselves are written:</text>
+    <text class="chg" x="24" y="242">DS = 0x10    ES = 0x10    FS = 0x17</text>
+    <text x="460" y="242">EAX = call number</text>
+  </g>
+  <g class="frame" id="f3" transform="translate(0,860)">
+    <text class="h" x="24" y="28">Frame 4. Return writes the registers back. The other CPUs do not push</text>
+    <text x="24" y="56">80386 iret writes back</text>
+    <text class="chg" x="220" y="56">EIP, CS, EFLAGS</text>
+    <text x="430" y="56">and ESP, SS when the saved CS has RPL 3</text>
+    <rect class="box" x="24" y="76" width="832" height="78" rx="6"/>
+    <text x="40" y="100">RV32  hardware writes these three registers</text>
+    <text class="chg" x="40" y="124">sepc = interrupted PC    sstatus = status on entry    scause = cause</text>
+    <text class="s" x="40" y="144">The sepc left by ecall points at the ecall. Software adds 4 before returning.</text>
+    <rect class="box" x="24" y="166" width="832" height="78" rx="6"/>
+    <text x="40" y="190">ARMv7  return address in LR, status in SPSR</text>
+    <text class="chg" x="40" y="214">LR_irq = interrupted instruction + 4    LR_svc = the next one    SPSR = CPSR on entry</text>
+    <text class="s" x="40" y="234">An IRQ handler subtracts 4. svc does not. movs pc, lr copies SPSR into CPSR.</text>
+    <rect class="box" x="24" y="256" width="832" height="78" rx="6"/>
+    <text x="40" y="280">AArch64  return address in ELR_EL1, status in SPSR_EL1</text>
+    <text class="chg" x="40" y="304">ELR_EL1 = the next instruction    SPSR_EL1 = PSTATE on entry</text>
+    <text class="s" x="40" y="324">Do not add 4. eret returns from these two registers.</text>
+  </g>
+
+</svg>

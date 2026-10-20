@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="860" viewBox="0 0 880 860">
+
+  <style>
+    text { font-family: "Noto Sans CJK SC", "Noto Sans CJK TC", sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .rom { fill: #e7e5e4; stroke: #44403c; }
+    .arr { stroke: #1e3a8a; stroke-width: 2; fill: none; marker-end: url(#ah); }
+  </style>
+
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">lgdt　整条 gdt_48，写进 GDTR 的是红色</text>
+    <text x="24" y="52">DS = 0x9020。这 6 个字节在线性地址 0x90200 加上 gdt_48 的偏移。</text>
+    <rect class="box" x="24" y="68" width="270" height="72" rx="6"/>
+    <text x="159" y="94" text-anchor="middle">字节 0–1</text>
+    <text x="159" y="116" text-anchor="middle">界限 0x800</text>
+    <rect class="box" x="306" y="68" width="270" height="72" rx="6"/>
+    <text x="441" y="94" text-anchor="middle">字节 2–3　基址 [15:0]</text>
+    <text x="441" y="116" text-anchor="middle">512+gdt</text>
+    <rect class="box" x="588" y="68" width="268" height="72" rx="6"/>
+    <text x="722" y="94" text-anchor="middle">字节 4–5　基址 [31:16]</text>
+    <text x="722" y="116" text-anchor="middle">0x0009</text>
+    <text x="24" y="164">合起来的基址 = 0x90000 + 512 + gdt 的偏移，也就是标号 gdt。</text>
+    <rect class="box" x="24" y="180" width="832" height="64" rx="6"/>
+    <text class="chg" x="40" y="206">GDTR.limit = 0x800</text>
+    <text class="chg" x="40" y="228">GDTR.base = 标号 gdt 的线性地址</text>
+    <text x="24" y="270">CS:IP = 9020:这条 lgdt</text>
+    <text x="280" y="270">DS = 0x9020</text>
+    <text x="460" y="270">CR0.PE = 0</text>
+    <text x="24" y="300">表本身，在标号 gdt：</text>
+    <text x="40" y="324">第 0 项　空描述符</text>
+    <text x="40" y="348">选择子 8　代码　基址 0　界限 8MB　DPL 0　类型 0x9A</text>
+    <text x="40" y="372">选择子 0x10　数据　基址 0　界限 8MB　DPL 0　类型 0x92</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,400)">
+    <text class="h" x="24" y="28">lmsw　整条 CR0。红色是刚写进低 16 位的值</text>
+    <text x="24" y="54">AX = 1。lmsw 把 AX 写入 CR0 的低 16 位，所以低 16 位 = 0x0001。</text>
+    <rect class="box" x="24" y="72" width="100" height="52" rx="6"/>
+    <text class="chg" x="74" y="94" text-anchor="middle">PE = 1</text>
+    <text class="s" x="74" y="112" text-anchor="middle">位 0</text>
+    <rect class="box" x="132" y="72" width="100" height="52" rx="6"/>
+    <text class="chg" x="182" y="94" text-anchor="middle">MP = 0</text>
+    <text class="s" x="182" y="112" text-anchor="middle">位 1</text>
+    <rect class="box" x="240" y="72" width="100" height="52" rx="6"/>
+    <text class="chg" x="290" y="94" text-anchor="middle">EM = 0</text>
+    <text class="s" x="290" y="112" text-anchor="middle">位 2</text>
+    <rect class="box" x="348" y="72" width="100" height="52" rx="6"/>
+    <text class="chg" x="398" y="94" text-anchor="middle">TS = 0</text>
+    <text class="s" x="398" y="112" text-anchor="middle">位 3</text>
+    <rect class="box" x="456" y="72" width="100" height="52" rx="6"/>
+    <text class="chg" x="506" y="94" text-anchor="middle">ET = 0</text>
+    <text class="s" x="506" y="112" text-anchor="middle">位 4</text>
+    <rect class="box" x="564" y="72" width="108" height="52" rx="6"/>
+    <text class="chg" x="618" y="103" text-anchor="middle">5–15 = 0</text>
+    <rect class="box" x="680" y="72" width="110" height="52" rx="6"/>
+    <text x="735" y="103" text-anchor="middle">16–30 = 0</text>
+    <rect class="box" x="798" y="72" width="58" height="52" rx="6"/>
+    <text x="827" y="103" text-anchor="middle">PG=0</text>
+    <text x="24" y="156">高 16 位这条指令写不到，PG 仍是 0。CS 仍是 0x9020，隐藏基址仍是 0x90200。</text>
+    <text x="24" y="184">有协处理器时，head.s 稍后把 MP 写成 1。没有协处理器时 MP 写成 0、EM 写成 1。</text>
+  </g>
+  <g class="frame" id="f2" transform="translate(0,620)">
+    <text class="h" x="24" y="28">ljmp $8,$0　CS 的隐藏描述符整份装入。红色是这次装入的字段</text>
+    <rect class="box" x="24" y="48" width="420" height="168" rx="6"/>
+    <text x="40" y="74">CS</text>
+    <text class="chg" x="40" y="100">选择子 = 8</text>
+    <text class="chg" x="40" y="124">隐藏基址 = 0</text>
+    <text class="chg" x="40" y="148">界限 = 8MB　　DPL = 0　　类型 0x9A</text>
+    <text class="chg" x="40" y="172">IP = 0</text>
+    <text class="s" x="40" y="196">下标是选择子的高 13 位，RPL 是低 2 位</text>
+    <rect class="box" x="460" y="48" width="396" height="168" rx="6"/>
+    <text x="476" y="74">GDTR 与 CR0</text>
+    <text x="476" y="102">GDTR.limit = 0x800</text>
+    <text x="476" y="126">GDTR.base = 标号 gdt</text>
+    <text x="476" y="150">CR0.PE = 1</text>
+    <text x="476" y="174">CR0.PG = 0</text>
+    <text class="s" x="476" y="198">远跳转还倒空预取队列</text>
+  </g>
+
+</svg>

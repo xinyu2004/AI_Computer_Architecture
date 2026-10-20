@@ -13,7 +13,9 @@
 | 指令 | 全称 | 效果 |
 | --- | --- | --- |
 | `mrs` / `msr` <sub>(AArch64)</sub> | Move to register from system register / move to system register from register，从系统寄存器读出 / 写入系统寄存器 | 寄存器的名字写在指令里。启动读 CurrentEL 和 SCTLR_EL1，并写 VBAR_EL1。EL2 退路写 HCR_EL2、CNTHCTL_EL2、CNTVOFF_EL2、SPSR_EL2 和 ELR_EL2。陷入之后读 ESR_EL1 和 FAR_EL1。`msr daifset, #2` 置上 I 屏蔽。`msr daifclr, #2` 清掉它。这个立即数的第 1 位就是 I。 |
-| `eret` <sub>(AArch64)</sub> | Exception return，异常返回 | 跳到 ELR，并把 SPSR 复制进 PSTATE。从 EL2 下去的目标是 EL1h，SPSR 是 `0x3c5`。从 EL1 进入 shell 时 SPSR 是 0，也就是 EL0t。IRQ 返回用的也是这条 `eret`：ELR_EL1 里已经是重新执行的地址，处理函数不再减 4。 |
+| <a id="eret"></a>`eret` <sub>(AArch64)</sub> | Exception return，异常返回 | 跳到 ELR，并把 SPSR 复制进 PSTATE。从 EL2 下去的目标是 EL1h，SPSR 是 `0x3c5`。从 EL1 进入 shell 时 SPSR 是 0，也就是 EL0t。IRQ 返回用的也是这条 `eret`：ELR_EL1 里已经是重新执行的地址，处理函数不再减 4。 |
+
+<a id="ttbr0-el1"></a>
 
 ## TTBR0_EL1 里的 4KiB 页
 
@@ -38,11 +40,19 @@
 
 | 位 | 全称 | 含义 |
 | --- | --- | --- |
-| CurrentEL <sub>(AArch64)</sub> | Current exception level，当前异常级 | 第 3 到 2 位。值 1 表示 EL1，所以寄存器读出来是 4。启动打印 `0x00000004`。 |
+| <a id="pstate"></a>CurrentEL <sub>(AArch64)</sub> | Current exception level，当前异常级 | 第 3 到 2 位。值 1 表示 EL1，所以寄存器读出来是 4。启动打印 `0x00000004`。 |
 | M <sub>(AArch64)</sub> | 异常级和栈的选择 | PSTATE 第 3 到 0 位。5 是 EL1h。0 是 EL0t，也就是 `eret` 进 shell 之前写入的 SPSR。SPSR `0x3c5` 是 EL1h，并且 DAIF 屏蔽都置着。 |
 | I | IRQ mask，IRQ 屏蔽 | PSTATE 第 7 位。置位后 IRQ 先挂着。`daifclr #2` 把它清掉。 |
-| M | MMU enable，MMU 使能 | SCTLR_EL1 第 0 位。置位后经 TTBR0_EL1 做翻译。 |
+| <a id="sctlr-el1"></a>M | MMU enable，MMU 使能 | SCTLR_EL1 第 0 位。置位后经 TTBR0_EL1 做翻译。 |
+| A | Alignment check，对齐检查 | SCTLR_EL1 第 1 位。`vm_on` 清掉。 |
+| C | Cache enable，数据缓存 | SCTLR_EL1 第 2 位。`vm_on` 清掉。 |
+| SA | Stack alignment check，栈对齐检查 | SCTLR_EL1 第 3 位。`vm_on` 清掉。 |
+| I | Instruction cache，指令缓存 | SCTLR_EL1 第 12 位。`vm_on` 清掉。 |
 | WXN <sub>(AArch64)</sub> | Write permission implies XN，可写则不可执行 | SCTLR_EL1 第 19 位。保持清掉，EL1 才能执行那些可写的内核页。 |
-| T0SZ <sub>(AArch64)</sub> | TTBR0 size，TTBR0 的地址宽度 | TCR_EL1 第 5 到 0 位。25 表示虚拟地址是 39 位，页表从第 1 级走起。 |
+| <a id="tcr-el1"></a>T0SZ <sub>(AArch64)</sub> | TTBR0 size，TTBR0 的地址宽度 | TCR_EL1 第 5 到 0 位。25 表示虚拟地址是 39 位，页表从第 1 级走起。 |
 | EPD1 <sub>(AArch64)</sub> | Translation table walk disable, TTBR1，关闭 TTBR1 的页表遍历 | TCR_EL1 第 23 位。置位后不再查 TTBR1。 |
+| IPS | Physical address size，物理地址宽度 | TCR_EL1 第 34 到 32 位。写成 2，表示 40 位物理地址。 |
+| <a id="mair"></a>MAIR attr0 / attr1 | Memory attribute indirection，内存属性 | attr0 是 `0x00`，device nGnRnE。attr1 是 `0x44`，普通内存、不缓存，放在第 15 到 8 位。 |
 | EC <sub>(AArch64)</sub> | Exception class，异常类别 | ESR_EL1 第 31 到 26 位。`0x15` 是从 AArch64 来的 `svc`。 |
+
+PSTATE、SCTLR_EL1、TCR_EL1 里上面没写到的位，这份内核不改。

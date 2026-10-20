@@ -6,7 +6,7 @@
 
 ## What this chapter is for
 
-`schedule` picks the next task. The switch itself is the `ljmp` in `switch_to`, aimed at that task's TSS. Task 1's code segment base is `0x4000000`. The linear address gem5 reports is that base plus the offset inside the segment.
+`schedule` picks the next task. The switch itself is the [`ljmp`](../i386_instructions.md#ljmp) in `switch_to`, aimed at that task's TSS. Task 1's code segment base is `0x4000000`. The linear address gem5 reports is that base plus the offset inside the segment. The frame that replaces the page-table root is in the [mechanism pictures](../mech.md#mmu). Where the registers land is the [task-switch picture](../mech.md#switch).
 
 ## What to read
 

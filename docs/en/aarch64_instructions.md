@@ -13,7 +13,9 @@ A smaller parenthetical mark sits in the first column. (AArch64) is a mechanism 
 | Instruction | Name | Effect |
 | --- | --- | --- |
 | `mrs` / `msr` <sub>(AArch64)</sub> | Move to register from system register / move to system register from register | The register name is in the instruction. Boot reads CurrentEL and SCTLR_EL1, and writes VBAR_EL1. The EL2 fallback writes HCR_EL2, CNTHCTL_EL2, CNTVOFF_EL2, SPSR_EL2, and ELR_EL2. A trap reads ESR_EL1 and FAR_EL1. `msr daifset, #2` sets the I mask. `msr daifclr, #2` clears it. The immediate's bit 1 is I. |
-| `eret` <sub>(AArch64)</sub> | Exception return | Jump to ELR and copy SPSR into PSTATE. From EL2 the target is EL1h, SPSR `0x3c5`. From EL1 into the shell, SPSR is 0, which is EL0t. An IRQ return uses the same `eret`: ELR_EL1 already holds the restart address, so the handler does not subtract 4. |
+| <a id="eret"></a>`eret` <sub>(AArch64)</sub> | Exception return | Jump to ELR and copy SPSR into PSTATE. From EL2 the target is EL1h, SPSR `0x3c5`. From EL1 into the shell, SPSR is 0, which is EL0t. An IRQ return uses the same `eret`: ELR_EL1 already holds the restart address, so the handler does not subtract 4. |
+
+<a id="ttbr0-el1"></a>
 
 ## 4KiB pages in TTBR0_EL1
 
@@ -38,11 +40,19 @@ The interrupt id is a load from GICC_IAR, and the end of interrupt is a store to
 
 | Bit | Name | Meaning |
 | --- | --- | --- |
-| CurrentEL <sub>(AArch64)</sub> | Current exception level | Bits [3:2]. The value 1 is EL1, so the register reads as 4. The boot prints `0x00000004`. |
+| <a id="pstate"></a>CurrentEL <sub>(AArch64)</sub> | Current exception level | Bits [3:2]. The value 1 is EL1, so the register reads as 4. The boot prints `0x00000004`. |
 | M <sub>(AArch64)</sub> | Exception level and stack | PSTATE bits [3:0]. 5 is EL1h. 0 is EL0t, the SPSR written before `eret` into the shell. SPSR `0x3c5` is EL1h with the DAIF masks set. |
 | I | IRQ mask | PSTATE bit 7. Set: IRQ stays pending. `daifclr #2` clears it. |
-| M | MMU enable | SCTLR_EL1 bit 0. Set: translation through TTBR0_EL1 is on. |
+| <a id="sctlr-el1"></a>M | MMU enable | SCTLR_EL1 bit 0. Set: translation through TTBR0_EL1 is on. |
+| A | Alignment check | SCTLR_EL1 bit 1. Cleared by `vm_on`. |
+| C | Cache enable | SCTLR_EL1 bit 2. Cleared by `vm_on`. |
+| SA | Stack alignment check | SCTLR_EL1 bit 3. Cleared by `vm_on`. |
+| I | Instruction cache | SCTLR_EL1 bit 12. Cleared by `vm_on`. |
 | WXN <sub>(AArch64)</sub> | Write permission implies XN | SCTLR_EL1 bit 19. Left clear, so EL1 may execute the writable kernel pages. |
-| T0SZ <sub>(AArch64)</sub> | TTBR0 size | TCR_EL1 bits [5:0]. 25 means a 39-bit virtual address, and the walk starts at level 1. |
+| <a id="tcr-el1"></a>T0SZ <sub>(AArch64)</sub> | TTBR0 size | TCR_EL1 bits [5:0]. 25 means a 39-bit virtual address, and the walk starts at level 1. |
 | EPD1 <sub>(AArch64)</sub> | Translation table walk disable, TTBR1 | TCR_EL1 bit 23. Set: TTBR1 is not consulted. |
+| IPS | Physical address size | TCR_EL1 bits [34:32]. Written 2, which is a 40-bit physical address. |
+| <a id="mair"></a>MAIR attr0 / attr1 | Memory attribute indirection | attr0 is `0x00`, device nGnRnE. attr1 is `0x44`, normal memory, non-cacheable, in bits [15:8]. |
 | EC <sub>(AArch64)</sub> | Exception class | ESR_EL1 bits [31:26]. `0x15` is an `svc` from AArch64. |
+
+Bits of PSTATE, SCTLR_EL1, and TCR_EL1 that this table does not name are left as they were.

@@ -6,6 +6,8 @@
 
 Boot with `labs/armv7/qemu/launch.sh`. The UART is in that terminal. Press F5 and choose **ARMv7** to stop at `_start` in `entry.S`, then set the next breakpoint. Break on the function. Addresses belong to this build.
 
+This column's nameplate is [SVC](../armv7_instructions.md#cpsr) and [TTBR0](../armv7_instructions.md#ttbr0). See the [mechanism pictures](../mech.md).
+
 ## Read this on the UART first
 
 ```text

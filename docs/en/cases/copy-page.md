@@ -6,7 +6,7 @@
 
 ## What this chapter is for
 
-When a shared page is written, the kernel allocates another page and copies 4KiB. `copy_page` is a macro. Its body is a `rep movsl` of 1024 dwords. Like the `stosl` in `setup_paging`, it fills the store queue. One loop fills page tables. The other copies a page.
+When a shared page is written, the kernel allocates another page and copies 4KiB. `copy_page` is a macro. Its body is a `rep movsl` of 1024 dwords. Like the `stosl` in `setup_paging`, it fills the store queue. One loop fills page tables. The other copies a page. The source, the destination, and the count are on the [copy picture](../mech.md#copy).
 
 ## What to read
 

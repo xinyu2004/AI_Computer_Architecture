@@ -6,7 +6,7 @@
 
 ## 这一章要看懂什么
 
-IRQ0 经过 8259，以向量 `0x20` 进入 `_timer_interrupt`。处理函数保存寄存器，递增 `jiffies`，写 EOI，调用 `do_timer`，再用 `iret` 返回。这一次 gem5 运行没有根磁盘，任务 1 会 `panic("Unable to mount root")` 并自旋。第一次时钟中断从那段自旋里进来，被打断的代码在内核里，所以这一拍不调用 `_schedule`。
+IRQ0 经过 8259，以向量 `0x20` 进入 `_timer_interrupt`。处理函数保存寄存器，递增 `jiffies`，写 EOI，调用 `do_timer`，再用 [`iret`](../i386_instructions.md#iret) 返回。这一次 gem5 运行没有根磁盘，任务 1 会 `panic("Unable to mount root")` 并自旋。第一次时钟中断从那段自旋里进来，被打断的代码在内核里，所以这一拍不调用 `_schedule`。现场的四帧在 [机制图](../mech.md#stack)。
 
 ## 读哪里
 

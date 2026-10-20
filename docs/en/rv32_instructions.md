@@ -12,9 +12,9 @@ A smaller parenthetical mark sits in the first column. (RV32) is a mechanism of 
 
 | Instruction | Name | Effect |
 | --- | --- | --- |
-| `mret` <sub>(RV32)</sub> | Machine return | Jump to `mepc` and enter the mode named by `mstatus.MPP`. `_start` uses it to enter S-mode. |
-| `ecall` <sub>(RV32)</sub> | Environment call | Trap to the next more privileged mode. A user program uses it to enter the kernel. `a7` selects exit, write, read, exec, list, fork, wait, sleep, or lookup by name. |
-| `sret` <sub>(RV32)</sub> | Supervisor return | Jump to `sepc` and copy `SPIE` back into `SIE`. This is how a trap handler returns. |
+| <a id="mret"></a>`mret` <sub>(RV32)</sub> | Machine return | Jump to `mepc` and enter the mode named by `mstatus.MPP`. `_start` uses it to enter S-mode. |
+| <a id="ecall"></a>`ecall` <sub>(RV32)</sub> | Environment call | Trap to the next more privileged mode. A user program uses it to enter the kernel. `a7` selects exit, write, read, exec, list, fork, wait, sleep, or lookup by name. |
+| <a id="sret"></a>`sret` <sub>(RV32)</sub> | Supervisor return | Jump to `sepc` and copy `SPIE` back into `SIE`. This is how a trap handler returns. |
 | `sfence.vma` | Supervisor fence, virtual memory | Drop translations the CPU has cached. It runs before and after the write to `satp`. |
 | `csrr` / `csrw` | CSR read / CSR write | Move a value between a register and a control register. M-mode uses `pmpaddr0`, `pmpcfg0`, `medeleg`, `mideleg`, `mstatus`, `mepc`, `mcounteren`, and `menvcfgh`. S-mode uses `satp`, `stvec`, `sepc`, `scause`, `sie`, `sstatus`, `sscratch`, `time`, `timeh`, `stimecmp`, and `stimecmph`. |
 | `wfi` | Wait for interrupt | Pause until an interrupt is pending. The shell uses it while waiting for a line, and `sleep` uses it while waiting out the milliseconds. The next timer tick is what resumes them. |
@@ -23,10 +23,15 @@ A smaller parenthetical mark sits in the first column. (RV32) is a mechanism of 
 
 | Bit | Name | Meaning |
 | --- | --- | --- |
-| `satp.MODE` | Address-translation mode | Bit 31 of `satp` on RV32. 1 selects Sv32, a two-level table of 4KiB pages. |
-| SIE | Supervisor interrupt enable | `sstatus` bit 1. Set: supervisor interrupts can be taken. |
+| <a id="satp"></a>`satp.MODE` | Address-translation mode | Bit 31 of `satp`. 1 selects Sv32, a two-level table of 4KiB pages. Bits 30:22 are the ASID, written 0 in this kernel. Bits 21:0 are the physical page number of the root, the root address shifted right by 12. |
+| <a id="sstatus"></a>SIE | Supervisor interrupt enable | `sstatus` bit 1. Set: supervisor interrupts can be taken. |
+| SPIE | Supervisor previous interrupt enable | `sstatus` bit 5. `sret` copies it back to SIE. Set before the return to user mode. |
+| SPP | Supervisor previous privilege | `sstatus` bit 8. Clear: `sret` enters U-mode. |
+| SUM | Supervisor user memory | `sstatus` bit 18. Set: S-mode may read and write user pages during a system call. |
 | STIE | Supervisor timer interrupt enable | `sie` bit 5. Set: the timer interrupt is allowed through. |
-| interrupt bit <sub>(RV32)</sub> | Interrupt, not an exception | Bit 31 of `scause`. Set, with the low bits equal to 5: the supervisor timer. |
+| <a id="scause"></a>interrupt bit <sub>(RV32)</sub> | Interrupt, not an exception | Bit 31 of `scause`. Set, with the low bits equal to 5: the supervisor timer. Low bits 9: the external interrupt. Low bits 8 with bit 31 clear: an `ecall` from U-mode. |
+
+Bits of `satp`, `sstatus`, and `scause` that this table does not name stay as they were on entry to S-mode. Where MODE and the interrupt bit sit on RV64 is the next section.
 
 ## What moves on RV64
 

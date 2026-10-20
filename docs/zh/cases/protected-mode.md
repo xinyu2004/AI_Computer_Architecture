@@ -6,7 +6,7 @@
 
 ## 这一章要看懂什么
 
-CPU 从实模式进入保护模式，靠的是 CR0 的 PE 位和一张 GDT。`lmsw` 置上 PE。下一条远跳转装入选择子 8，代码段和数据段的基址都是 0。
+CPU 从实模式进入保护模式，靠的是 [CR0](../i386_instructions.md#cr0) 的 [PE](../i386_instructions.md#pe) 位和一张 GDT。[`lmsw`](../i386_instructions.md#lmsw) 把 CR0 的低 16 位写成 `0x0001`。下一条远跳转装入选择子 8，代码段和数据段的基址都是 0。`gdt_48` 的 6 个字节和寄存器前后在 [机制图](../mech.md#segments)。
 
 ## 读哪里
 

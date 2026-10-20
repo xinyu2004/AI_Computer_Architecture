@@ -6,6 +6,8 @@
 
 Boot with `labs/aarch64/qemu/launch.sh`. The UART is in that terminal. Press F5 and choose **AArch64** to stop at `_start` in `entry.S`, then set the next breakpoint. Break on the function. Addresses belong to this build.
 
+This column's nameplate is [EL1](../aarch64_instructions.md#pstate) and [TTBR0_EL1](../aarch64_instructions.md#ttbr0-el1). AArch64 is the 64-bit state of ARMv8. See the [mechanism pictures](../mech.md).
+
 This is a separate kernel, not the ARMv7 sources behind a conditional. The exception level, the page tables, and the system registers are not shared.
 
 ## Read this on the UART first

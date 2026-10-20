@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>Frames</title>
+  <style>
+    body { font-family: ui-sans-serif, sans-serif; margin: 24px; color: #1c1917; }
+    button { font: inherit; padding: 6px 14px; margin-right: 8px; }
+    #stage { margin-top: 16px; overflow: hidden; border: 1px solid #44403c; width: 880px; }
+    #stage svg { display: block; }
+    a { color: #1e3a8a; }
+  </style>
+</head>
+<body>
+  <p>
+    <a href="?fig=real-mode-zh">实模式</a>
+    <a href="?fig=real-mode">real-mode</a>
+    <a href="?fig=segments-zh">保护模式</a>
+    <a href="?fig=segments">segments</a>
+    <a href="?fig=mmu-zh">页表</a>
+    <a href="?fig=mmu">mmu</a>
+    <a href="?fig=stack-zh">中断</a>
+    <a href="?fig=stack">stack</a>
+    <a href="?fig=rings-zh">特权级</a>
+    <a href="?fig=rings">rings</a>
+    <a href="?fig=cr0-zh">CR0</a>
+    <a href="?fig=cr0">cr0</a>
+    <a href="?fig=eflags-zh">EFLAGS</a>
+    <a href="?fig=eflags">eflags</a>
+    <a href="?fig=syscall-zh">调用号</a>
+    <a href="?fig=syscall">syscall</a>
+    <a href="?fig=switch-zh">切换</a>
+    <a href="?fig=switch">switch</a>
+    <a href="?fig=copy-zh">搬页</a>
+    <a href="?fig=copy">copy</a>
+  </p>
+  <p>
+    <button id="prev" type="button">上一帧</button>
+    <button id="next" type="button">下一帧</button>
+    <span id="label"></span>
+  </p>
+  <div id="stage"></div>
+  <script>
+    const heights = {
+      "real-mode": [390, 290, 430, 360],
+      "real-mode-zh": [390, 290, 430, 360],
+      segments: [400, 220, 240],
+      "segments-zh": [400, 220, 240],
+      mmu: [320, 200, 280],
+      "mmu-zh": [320, 200, 280],
+      stack: [220, 360, 280, 360],
+      "stack-zh": [220, 360, 280, 360],
+      rings: [460],
+      "rings-zh": [460],
+      cr0: [240],
+      "cr0-zh": [240],
+      eflags: [260],
+      "eflags-zh": [260],
+      syscall: [360, 300],
+      "syscall-zh": [360, 300],
+      switch: [280, 300],
+      "switch-zh": [280, 300],
+      copy: [460],
+      "copy-zh": [460]
+    };
+    const params = new URLSearchParams(location.search);
+    const fig = heights[params.get("fig")] ? params.get("fig") : "stack";
+    const cuts = heights[fig];
+    const asked = parseInt(params.get("frame") || "1", 10);
+    let index = Math.min(Math.max(asked, 1), cuts.length) - 1;
+    const stage = document.getElementById("stage");
+    const label = document.getElementById("label");
+
+    function crop() {
+      const svg = stage.querySelector("svg");
+      if (!svg) return;
+      let y = 0;
+      for (let i = 0; i < index; i++) y += cuts[i];
+      svg.setAttribute("viewBox", "0 " + y + " 880 " + cuts[index]);
+      svg.setAttribute("width", "880");
+      svg.setAttribute("height", String(cuts[index]));
+      label.textContent = fig + "  " + (index + 1) + " / " + cuts.length;
+    }
+
+    fetch(fig + ".svg").then(function (r) { return r.text(); }).then(function (t) {
+      stage.innerHTML = t;
+      crop();
+    });
+
+    document.getElementById("prev").onclick = function () {
+      if (index > 0) index--;
+      crop();
+    };
+    document.getElementById("next").onclick = function () {
+      if (index + 1 < cuts.length) index++;
+      crop();
+    };
+  </script>
+</body>
+</html>

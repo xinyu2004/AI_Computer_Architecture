@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="460" viewBox="0 0 880 460">
+  <style>
+    text { font-family: "Noto Sans CJK SC", "Noto Sans CJK TC", sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .use { fill: #dbeafe; stroke: #1e3a8a; }
+    .on { fill: #fee2e2; stroke: #b91c1c; }
+  </style>
+
+  <text class="h" x="24" y="28">特权级。CPL 是 CS 的低两位。选择子和门的其余字段都在</text>
+  <rect class="use" x="24" y="48" width="250" height="36" rx="6"/>
+  <text x="149" y="71" text-anchor="middle">ring 0　内核</text>
+  <rect class="box" x="24" y="92" width="250" height="32" rx="6"/>
+  <text x="149" y="113" text-anchor="middle">ring 1　这里不用</text>
+  <rect class="box" x="24" y="132" width="250" height="32" rx="6"/>
+  <text x="149" y="153" text-anchor="middle">ring 2　这里不用</text>
+  <rect class="use" x="24" y="172" width="250" height="36" rx="6"/>
+  <text x="149" y="195" text-anchor="middle">ring 3　用户，shell</text>
+  <rect class="box" x="300" y="48" width="556" height="36" rx="6"/>
+  <text x="578" y="71" text-anchor="middle">RV32　S-mode / U-mode　　返回看 sstatus.SPP</text>
+  <rect class="box" x="300" y="96" width="556" height="36" rx="6"/>
+  <text x="578" y="119" text-anchor="middle">ARMv7　SVC / user　　movs pc, lr 把 SPSR 拷回 CPSR</text>
+  <rect class="box" x="300" y="144" width="556" height="36" rx="6"/>
+  <text x="578" y="167" text-anchor="middle">AArch64　EL1 / EL0　　eret 的目标级别在 SPSR_EL1</text>
+  <text x="300" y="206">CPL = CS 的第 1 位和第 0 位。这份内核的 CS 只有 0 和 3。</text>
+  <text class="h" x="24" y="248">选择子，16 位</text>
+  <rect class="box" x="24" y="262" width="520" height="48" rx="6"/>
+  <text x="284" y="291" text-anchor="middle">第 15–3 位　GDT 下标</text>
+  <rect class="box" x="552" y="262" width="120" height="48" rx="6"/>
+  <text x="612" y="282" text-anchor="middle">第 2 位</text>
+  <text x="612" y="300" text-anchor="middle">0 = GDT</text>
+  <rect class="box" x="680" y="262" width="176" height="48" rx="6"/>
+  <text x="768" y="291" text-anchor="middle">第 1–0 位　RPL</text>
+  <text class="h" x="24" y="348">本内核装的两扇门。红色是写进描述符的类型和 DPL</text>
+  <rect class="box" x="24" y="364" width="410" height="72" rx="6"/>
+  <text x="40" y="390">int 0x80　陷阱门</text>
+  <text class="chg" x="40" y="416">类型 = 15　　DPL = 3</text>
+  <rect class="box" x="450" y="364" width="406" height="72" rx="6"/>
+  <text x="466" y="390">向量 0x20　中断门　时钟</text>
+  <text class="chg" x="466" y="416">类型 = 14　　DPL = 0</text>
+
+</svg>

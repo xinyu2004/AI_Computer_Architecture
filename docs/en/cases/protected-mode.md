@@ -6,7 +6,7 @@
 
 ## What this chapter is for
 
-The CPU leaves real mode when CR0.PE is set and a GDT is in place. `lmsw` sets PE. The far jump after it loads selector 8. The code and data segments both have base 0.
+The CPU leaves real mode when [PE](../i386_instructions.md#pe) in [CR0](../i386_instructions.md#cr0) is set and a GDT is in place. [`lmsw`](../i386_instructions.md#lmsw) writes the low 16 bits of CR0 as `0x0001`. The far jump after it loads selector 8. The code and data segments both have base 0. The 6 bytes of `gdt_48` and the register changes are in the [mechanism pictures](../mech.md#segments).
 
 ## What to read
 

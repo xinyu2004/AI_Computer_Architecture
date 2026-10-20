@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="580" viewBox="0 0 880 580">
+
+  <style>
+    text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .arr { stroke: #1e3a8a; stroke-width: 2; fill: none; marker-end: url(#ah); }
+  </style>
+
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">Frame 1. The 80386 ljmp targets the next task's TSS selector</text>
+    <rect class="box" x="24" y="48" width="410" height="200" rx="6"/>
+    <text x="40" y="74">The CPU stores into the old TSS</text>
+    <text class="chg" x="40" y="102">CR3, EIP, EFLAGS</text>
+    <text class="chg" x="40" y="126">EAX ECX EDX EBX ESP EBP ESI EDI</text>
+    <text class="chg" x="40" y="150">ES CS SS DS FS GS</text>
+    <text x="40" y="178">The LDT selector sits in that TSS too</text>
+    <text class="s" x="40" y="206">Instructions after ljmp run when switched back</text>
+    <rect class="box" x="446" y="48" width="410" height="200" rx="6"/>
+    <text x="462" y="74">The CPU loads from the new TSS</text>
+    <text class="chg" x="462" y="102">CR3, EIP, EFLAGS</text>
+    <text class="chg" x="462" y="126">the same general and segment registers</text>
+    <text class="chg" x="462" y="150">LDT</text>
+    <text x="462" y="178">Execution resumes at the saved EIP</text>
+    <text class="s" x="462" y="222">This is a jump, so NT is not set by it</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,280)">
+    <text class="h" x="24" y="28">Frame 2. The other three store the callee-saved registers in their own block</text>
+    <rect class="box" x="24" y="48" width="832" height="72" rx="6"/>
+    <text x="40" y="72">RV32  swtch(old, next). a0 is the old block, a1 the new one</text>
+    <text class="chg" x="40" y="98">ra, sp, s0-s11. ret goes to the loaded ra</text>
+    <rect class="box" x="24" y="132" width="832" height="72" rx="6"/>
+    <text x="40" y="156">ARMv7  r0 is old, r1 is next. The CPU stays in SVC</text>
+    <text class="chg" x="40" y="182">r4-r11, lr, sp. bx lr goes to the loaded lr</text>
+    <rect class="box" x="24" y="216" width="832" height="72" rx="6"/>
+    <text x="40" y="240">AArch64  x0 is old, x1 is next. The CPU stays at EL1</text>
+    <text class="chg" x="40" y="266">x19-x30, sp. ret goes to the loaded x30</text>
+  </g>
+
+</svg>

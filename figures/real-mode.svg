@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1470" viewBox="0 0 880 1470">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#1e3a8a"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .rom { fill: #e7e5e4; stroke: #44403c; }
+    .hit { fill: #fee2e2; stroke: #b91c1c; }
+    .arr { stroke: #1e3a8a; stroke-width: 2; fill: none; marker-end: url(#ah); }
+  </style>
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">Frame 1. At power-on, real mode sees only 0 to 1MB</text>
+    <text x="24" y="54">Each access is a pair. Shift that pair's segment left by 4 and add its own offset.</text>
+    <rect class="box" x="24" y="72" width="832" height="44" rx="6"/>
+    <text x="40" y="98">0x00000-0x003FF  Interrupt vectors. The BIOS fills them. int 0x13 is entry 0x13.</text>
+    <rect class="hit" x="24" y="124" width="832" height="44" rx="6"/>
+    <text x="40" y="150">0x7C00 comes from CS:IP = 0000:7C00. Shift 0 left by 4 and add IP 0x7C00.</text>
+    <rect class="box" x="24" y="176" width="832" height="44" rx="6"/>
+    <text x="40" y="202">0x10000  Empty RAM. ES:BX = 1000:0000 will name it later.</text>
+    <rect class="box" x="24" y="228" width="832" height="44" rx="6"/>
+    <text x="40" y="254">0x90000 and 0x90200  Empty. ES:DI and ES:BX will write them later.</text>
+    <rect class="rom" x="24" y="280" width="832" height="44" rx="6"/>
+    <text x="40" y="306">0xF0000-0xFFFFF  BIOS ROM. After reset the CPU runs the BIOS, which then reads the disk.</text>
+    <text class="s" x="24" y="348">Not to scale. Red is the address this step writes. A20 is still off.</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,390)">
+    <text class="h" x="24" y="28">Frame 2. Sector 1 enters RAM. The address comes from CS:IP</text>
+    <rect class="box" x="24" y="48" width="250" height="88" rx="6"/>
+    <text x="149" y="80" text-anchor="middle">boot disk, sector 1</text>
+    <text class="s" x="149" y="102" text-anchor="middle">512 bytes, ends with 0xAA55</text>
+    <line class="arr" x1="274" y1="92" x2="348" y2="92"/>
+    <rect class="hit" x="352" y="48" width="504" height="88" rx="6"/>
+    <text x="604" y="74" text-anchor="middle">CS:IP = 0000:7C00</text>
+    <text class="chg" x="604" y="98" text-anchor="middle">0 &lt;&lt; 4 + 0x7C00 = 0x7C00</text>
+    <text class="s" x="604" y="118" text-anchor="middle">CS is 0 here, not 0x07C0</text>
+    <text x="24" y="164">The BIOS in ROM does this read. bootsect.s is still on disk.</text>
+    <text x="24" y="188">The BIOS jumps to this CS:IP. F5 stops at start in bootsect.s.</text>
+    <text x="24" y="212">Later int 0x13 calls are still the BIOS. The destination is then ES:BX.</text>
+  </g>
+  <g class="frame" id="f2" transform="translate(0,680)">
+    <text class="h" x="24" y="28">Frame 3. First a copy inside RAM, then disk into RAM</text>
+    <rect class="box" x="24" y="46" width="280" height="78" rx="6"/>
+    <text x="164" y="70" text-anchor="middle">DS:SI = 07C0:0000</text>
+    <text class="chg" x="164" y="92" text-anchor="middle">0x07C0 &lt;&lt; 4 + 0</text>
+    <text class="chg" x="164" y="110" text-anchor="middle">= 0x7C00</text>
+    <line class="arr" x1="304" y1="85" x2="368" y2="85"/>
+    <rect class="hit" x="372" y="46" width="484" height="78" rx="6"/>
+    <text x="614" y="70" text-anchor="middle">ES:DI = 9000:0000</text>
+    <text class="chg" x="614" y="92" text-anchor="middle">0x9000 &lt;&lt; 4 + 0 = 0x90000</text>
+    <text class="s" x="614" y="110" text-anchor="middle">rep movsw, 256 words, still at 0x7C00</text>
+    <rect class="box" x="24" y="136" width="280" height="78" rx="6"/>
+    <text x="164" y="166" text-anchor="middle">setup, on disk</text>
+    <text class="s" x="164" y="188" text-anchor="middle">4 sectors, int 0x13</text>
+    <line class="arr" x1="304" y1="175" x2="368" y2="175"/>
+    <rect class="hit" x="372" y="136" width="484" height="78" rx="6"/>
+    <text x="614" y="160" text-anchor="middle">ES:BX = 9000:0200</text>
+    <text class="chg" x="614" y="182" text-anchor="middle">0x9000 &lt;&lt; 4 + 0x200 = 0x90200</text>
+    <text class="s" x="614" y="200" text-anchor="middle">setup.s. The offset is BX, not DI</text>
+    <rect class="box" x="24" y="226" width="280" height="78" rx="6"/>
+    <text x="164" y="256" text-anchor="middle">system, on disk</text>
+    <text class="s" x="164" y="278" text-anchor="middle">read_it, still int 0x13</text>
+    <line class="arr" x1="304" y1="265" x2="368" y2="265"/>
+    <rect class="hit" x="372" y="226" width="484" height="78" rx="6"/>
+    <text x="614" y="250" text-anchor="middle">ES:BX = 1000:0000</text>
+    <text class="chg" x="614" y="272" text-anchor="middle">0x1000 &lt;&lt; 4 + 0 = 0x10000</text>
+    <text class="s" x="614" y="290" text-anchor="middle">stops before segment 0x4000, linear 0x40000</text>
+    <text x="24" y="328">After go the stack is SS:SP = 9000:FF00.</text>
+    <text class="chg" x="24" y="352">0x9000 &lt;&lt; 4 + 0xFF00 = 0x9FF00</text>
+    <text x="24" y="376">The first arrow is a copy inside RAM. The next two are disk into RAM, at 0x90000.</text>
+    <text x="24" y="400">Then ljmp to CS:IP = 9020:0000, into setup.s. 0x9020 &lt;&lt; 4 + 0 = 0x90200.</text>
+  </g>
+  <g class="frame" id="f3" transform="translate(0,1110)">
+    <text class="h" x="24" y="28">Frame 4. setup moves the system from 0x10000 down to 0</text>
+    <rect class="box" x="24" y="46" width="280" height="78" rx="6"/>
+    <text x="164" y="70" text-anchor="middle">DS:SI = 1000:0000</text>
+    <text class="chg" x="164" y="94" text-anchor="middle">0x1000 &lt;&lt; 4 + 0 = 0x10000</text>
+    <line class="arr" x1="304" y1="85" x2="368" y2="85"/>
+    <rect class="hit" x="372" y="46" width="484" height="78" rx="6"/>
+    <text x="614" y="70" text-anchor="middle">ES:DI = 0000:0000</text>
+    <text class="chg" x="614" y="94" text-anchor="middle">0 &lt;&lt; 4 + 0 = 0</text>
+    <text class="s" x="614" y="112" text-anchor="middle">first rep movsw, 64KB</text>
+    <text x="24" y="150">Next time both DS and ES gain 0x1000. Stop when the source segment reaches 0x9000.</text>
+    <text x="24" y="174">0x20000 moves to 0x10000, and 0x30000 moves to 0x20000. setup stays at 0x90200.</text>
+    <text x="24" y="206">setup then does four more things. The registers it writes are on the protected-mode picture.</text>
+    <text x="40" y="230">lgdt gdt_48. Bytes 0-1 are limit 0x800, bytes 2-3 are 512+gdt, bytes 4-5 are 0x0009.</text>
+    <text x="40" y="254">A20: write 0xD1 to port 0x64, then 0xDF to port 0x60.</text>
+    <text x="40" y="278">8259: master vector base 0x20, slave base 0x28.</text>
+    <text x="40" y="302">lmsw writes the low 16 bits of CR0, then ljmp $8,$0.</text>
+    <text class="s" x="24" y="330">RV32, ARMv7, and AArch64 have no picture like this. QEMU places the image and enters _start.</text>
+  </g>
+</svg>

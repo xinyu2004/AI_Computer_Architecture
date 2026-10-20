@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1220" viewBox="0 0 880 1220">
+
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#1e3a8a"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: "Noto Sans CJK SC", "Noto Sans CJK TC", sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .hw { fill: #dbeafe; stroke: #1e3a8a; }
+    .sw { fill: #fef3c7; stroke: #92400e; }
+  </style>
+
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">帧 1　进门之前，现场还在寄存器里</text>
+    <rect class="box" x="24" y="52" width="200" height="44" rx="6"/>
+    <text x="124" y="79" text-anchor="middle">EFLAGS</text>
+    <rect class="box" x="236" y="52" width="140" height="44" rx="6"/>
+    <text x="306" y="79" text-anchor="middle">CS</text>
+    <rect class="box" x="388" y="52" width="140" height="44" rx="6"/>
+    <text x="458" y="79" text-anchor="middle">EIP</text>
+    <rect class="box" x="540" y="52" width="316" height="44" rx="6"/>
+    <text x="698" y="79" text-anchor="middle">栈顶　SS:ESP</text>
+    <text x="24" y="128">从 ring 3 进到 ring 0 时，新的 SS:ESP 取自当前 TSS 的 SS0 和 ESP0。</text>
+    <text x="24" y="156">调用号在 EAX。int 0x80 和向量 0x20 都不带错误码。</text>
+    <text class="s" x="24" y="188">蓝色是 CPU 压进栈的拷贝。黄色是处理函数自己压的。红色是这一步新写成的值。</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,220)">
+    <text class="h" x="24" y="28">帧 2　CPU 把寄存器拷进栈。栈向下长，上面是先压的</text>
+    <rect class="hw" x="24" y="48" width="520" height="40" rx="6"/>
+    <text x="40" y="73">用户 SS</text>
+    <text class="chg" x="200" y="73">从用户的 SS 拷来</text>
+    <rect class="hw" x="24" y="96" width="520" height="40" rx="6"/>
+    <text x="40" y="121">用户 ESP</text>
+    <text class="chg" x="200" y="121">从用户的 ESP 拷来</text>
+    <rect class="hw" x="24" y="144" width="520" height="40" rx="6"/>
+    <text x="40" y="169">EFLAGS</text>
+    <text class="chg" x="200" y="169">从 EFLAGS 拷来</text>
+    <rect class="hw" x="24" y="192" width="520" height="40" rx="6"/>
+    <text x="40" y="217">CS</text>
+    <text class="chg" x="200" y="217">从 CS 拷来</text>
+    <rect class="hw" x="24" y="240" width="520" height="40" rx="6"/>
+    <text x="40" y="265">EIP</text>
+    <text class="chg" x="200" y="265">从 EIP 拷来　　SS:ESP 指向这里</text>
+    <text x="24" y="308">上面两格只在特权级变化时才有。时钟从 ring 0 进来时，栈上是 EFLAGS、CS、EIP。</text>
+    <text class="s" x="24" y="336">中断门还会把 EFLAGS.IF 写成 0。陷阱门 int 0x80 留下原来的 IF。</text>
+  </g>
+  <g class="frame" id="f2" transform="translate(0,580)">
+    <text class="h" x="24" y="28">帧 3　_system_call 再压这些。EAX 留着当调用号</text>
+    <rect class="sw" x="24" y="52" width="250" height="36" rx="6"/>
+    <text class="chg" x="149" y="75" text-anchor="middle">EBX</text>
+    <rect class="sw" x="286" y="52" width="180" height="36" rx="6"/>
+    <text class="chg" x="376" y="75" text-anchor="middle">ECX</text>
+    <rect class="sw" x="478" y="52" width="180" height="36" rx="6"/>
+    <text class="chg" x="568" y="75" text-anchor="middle">EDX</text>
+    <rect class="sw" x="24" y="100" width="200" height="36" rx="6"/>
+    <text class="chg" x="124" y="123" text-anchor="middle">FS</text>
+    <rect class="sw" x="236" y="100" width="200" height="36" rx="6"/>
+    <text class="chg" x="336" y="123" text-anchor="middle">ES</text>
+    <rect class="sw" x="448" y="100" width="210" height="36" rx="6"/>
+    <text class="chg" x="553" y="123" text-anchor="middle">DS</text>
+    <rect class="hw" x="24" y="148" width="634" height="36" rx="6"/>
+    <text x="341" y="171" text-anchor="middle">底下仍是帧 2 的 EFLAGS、CS、EIP</text>
+    <text x="24" y="214">压完之后，寄存器本身再写成：</text>
+    <text class="chg" x="24" y="242">DS = 0x10　　ES = 0x10　　FS = 0x17</text>
+    <text x="420" y="242">EAX = 调用号</text>
+  </g>
+  <g class="frame" id="f3" transform="translate(0,860)">
+    <text class="h" x="24" y="28">帧 4　返回时写回寄存器。另外三台 CPU 不压栈</text>
+    <text x="24" y="56">80386 的 iret 写回：</text>
+    <text class="chg" x="180" y="56">EIP、CS、EFLAGS</text>
+    <text x="400" y="56">保存的 CS 的 RPL 为 3 时再写回 ESP、SS</text>
+    <rect class="box" x="24" y="76" width="832" height="78" rx="6"/>
+    <text x="40" y="100">RV32　硬件写这三个寄存器</text>
+    <text class="chg" x="40" y="124">sepc = 被打断的 PC　　sstatus = 进入前的状态　　scause = 原因</text>
+    <text class="s" x="40" y="144">ecall 留下的 sepc 指着 ecall 自己。返回前软件给 sepc 加 4。</text>
+    <rect class="box" x="24" y="166" width="832" height="78" rx="6"/>
+    <text x="40" y="190">ARMv7　返回地址在 LR，状态在 SPSR</text>
+    <text class="chg" x="40" y="214">LR_irq = 被打断的指令 + 4　　LR_svc = 下一条　　SPSR = 进入时的 CPSR</text>
+    <text class="s" x="40" y="234">处理 IRQ 时要减 4。svc 不用减。movs pc, lr 把 SPSR 拷回 CPSR。</text>
+    <rect class="box" x="24" y="256" width="832" height="78" rx="6"/>
+    <text x="40" y="280">AArch64　返回地址在 ELR_EL1，状态在 SPSR_EL1</text>
+    <text class="chg" x="40" y="304">ELR_EL1 = 下一条　　SPSR_EL1 = 进入时的 PSTATE</text>
+    <text class="s" x="40" y="324">不要再加 4。eret 按这两个寄存器回去。</text>
+  </g>
+
+</svg>

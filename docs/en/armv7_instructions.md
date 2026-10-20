@@ -17,6 +17,8 @@ A smaller parenthetical mark sits in the first column. (ARMv7) is a mechanism of
 | `mrc` / `mcr` <sub>(ARMv7)</sub> | Move to ARM register from coprocessor / move to coprocessor from ARM register | Coprocessor 15 holds the system registers. The opcode fields name the register. This kernel uses `c1` for SCTLR and, in the Hyp fallback, HCR; `c2` for TTBR0 and TTBCR; `c3` for DACR; `c12` for VBAR; `c14` for CNTFRQ, CNTP_CTL, and the Hyp CNTHCTL; `c5` and `c6` for the data-fault status and address; `c8` to invalidate the TLB. |
 | `eret` <sub>(ARMv7)</sub> | Exception return | From Hyp, jump to ELR_hyp and copy SPSR_hyp into CPSR. This boot is already SVC, so that return is skipped. |
 
+<a id="ttbr0"></a>
+
 ## Short-descriptor pages
 
 `vm_on` writes TTBR0, TTBCR, and DACR through `mcr`, then sets SCTLR.M. Caches stay off.
@@ -30,7 +32,7 @@ A smaller parenthetical mark sits in the first column. (ARMv7) is a mechanism of
 | Instruction | Name | Effect |
 | --- | --- | --- |
 | `svc` <sub>(ARMv7)</sub> | Supervisor call | Enter SVC mode. Hardware leaves LR_svc pointing at the next instruction. In this kernel `r7` selects exit, write, read, exec, list, fork, wait, sleep, or lookup by name, and `r0`–`r2` are the arguments. |
-| `movs pc, lr` <sub>(ARMv7)</sub> | Move to pc, and restore SPSR | The S bit on a write to pc copies SPSR into CPSR. That is the return from `svc` and the return to a user program. The `^` on `ldmia ..., pc` does the same copy for the IRQ return. IRQ entry subtracts 4 from LR_irq first: the hardware left it four bytes past the interrupted instruction. |
+| <a id="movs-pc-lr"></a>`movs pc, lr` <sub>(ARMv7)</sub> | Move to pc, and restore SPSR | The S bit on a write to pc copies SPSR into CPSR. That is the return from `svc` and the return to a user program. The `^` on `ldmia ..., pc` does the same copy for the IRQ return. IRQ entry subtracts 4 from LR_irq first: the hardware left it four bytes past the interrupted instruction. |
 | `wfi` | Wait for interrupt | Pause until an interrupt is pending. The shell uses it while waiting for a line, and `sleep` uses it while waiting out the milliseconds. |
 | `hvc` / `smc` <sub>(ARMv7)</sub> | Hypervisor call / secure monitor call | `r0` holds `0x84000008`, PSCI SYSTEM_OFF. This board's device tree names `hvc`. `smc` is the other conduit. |
 
@@ -46,11 +48,20 @@ The interrupt id is a load from GICC_IAR, and the end of interrupt is a store to
 
 | Bit | Name | Meaning |
 | --- | --- | --- |
-| Mode <sub>(ARMv7)</sub> | CPSR mode field | Bits [4:0]. `0x13` is SVC, `0x1a` is Hyp, `0x10` is user, `0x1f` is System. |
+| <a id="cpsr"></a>Mode <sub>(ARMv7)</sub> | CPSR mode field | Bits [4:0]. `0x13` is SVC, `0x1a` is Hyp, `0x10` is user, `0x1f` is System. `msr cpsr_c` writes bits [7:0] and leaves the condition flags. The printed low byte `0xd3` is I, F, and SVC. |
 | I | IRQ mask | CPSR bit 7. Set: IRQ stays pending. |
 | F <sub>(ARMv7)</sub> | FIQ mask | CPSR bit 6. Set: FIQ stays pending. |
-| M | MMU enable | SCTLR bit 0. Set: short-descriptor translation is on. |
-| EAE <sub>(ARMv7)</sub> | Extended address enable | TTBCR bit 31. Clear: TTBR0 is a short-descriptor first-level table. |
+| <a id="sctlr"></a>M | MMU enable | SCTLR bit 0. Set: short-descriptor translation is on. |
+| A | Alignment check | SCTLR bit 1. Cleared by `vm_on`. |
+| C | Cache enable | SCTLR bit 2. Cleared by `vm_on`. |
+| I | Instruction cache | SCTLR bit 12. Cleared by `vm_on`. |
+| TRE | TEX remap enable | SCTLR bit 28. Cleared by `vm_on`. |
+| AFE | Access flag enable | SCTLR bit 29. Cleared by `vm_on`. |
+| <a id="ttbcr"></a>EAE <sub>(ARMv7)</sub> | Extended address enable | TTBCR bit 31. Clear: TTBR0 is a short-descriptor first-level table. |
+| N | TTBR0 width | TTBCR bits [2:0]. Written 0, so TTBR0 covers the whole 32-bit address. |
 | PD1 <sub>(ARMv7)</sub> | Translation table walk disable, TTBR1 | TTBCR bit 5. Set: TTBR1 is not consulted. |
+| <a id="dacr"></a>DACR domain 0 | Domain access control | The low two bits are written `01`: domain 0 is a client, so the AP bits in a page-table entry are checked. |
 | ENABLE | Timer enable | CNTP_CTL bit 0. Set: CNTPCT is compared with CNTP_CVAL. |
 | AckCtl <sub>(ARMv7)</sub> | Acknowledge control | GICC_CTLR bit 2. Set: a Secure read of GICC_IAR returns the Group 1 id. |
+
+Bits of CPSR, SCTLR, and TTBCR that this table does not name are left as they were.

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="460" viewBox="0 0 880 460">
+  <style>
+    text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .use { fill: #dbeafe; stroke: #1e3a8a; }
+    .on { fill: #fee2e2; stroke: #b91c1c; }
+  </style>
+
+  <text class="h" x="24" y="28">Privilege. CPL is the low two bits of CS. The rest of the selector is here too</text>
+  <rect class="use" x="24" y="48" width="250" height="36" rx="6"/>
+  <text x="149" y="71" text-anchor="middle">ring 0  kernel</text>
+  <rect class="box" x="24" y="92" width="250" height="32" rx="6"/>
+  <text x="149" y="113" text-anchor="middle">ring 1  unused here</text>
+  <rect class="box" x="24" y="132" width="250" height="32" rx="6"/>
+  <text x="149" y="153" text-anchor="middle">ring 2  unused here</text>
+  <rect class="use" x="24" y="172" width="250" height="36" rx="6"/>
+  <text x="149" y="195" text-anchor="middle">ring 3  user, the shell</text>
+  <rect class="box" x="300" y="48" width="556" height="36" rx="6"/>
+  <text x="578" y="71" text-anchor="middle">RV32  S-mode / U-mode    return uses sstatus.SPP</text>
+  <rect class="box" x="300" y="96" width="556" height="36" rx="6"/>
+  <text x="578" y="119" text-anchor="middle">ARMv7  SVC / user    movs pc, lr copies SPSR into CPSR</text>
+  <rect class="box" x="300" y="144" width="556" height="36" rx="6"/>
+  <text x="578" y="167" text-anchor="middle">AArch64  EL1 / EL0    eret takes the level from SPSR_EL1</text>
+  <text x="300" y="206">CPL = CS bits 1 and 0. This kernel's CS is only 0 or 3.</text>
+  <text class="h" x="24" y="248">Selector, 16 bits</text>
+  <rect class="box" x="24" y="262" width="520" height="48" rx="6"/>
+  <text x="284" y="291" text-anchor="middle">bits 15-3  GDT index</text>
+  <rect class="box" x="552" y="262" width="140" height="48" rx="6"/>
+  <text x="622" y="282" text-anchor="middle">bit 2</text>
+  <text x="622" y="300" text-anchor="middle">0 = GDT</text>
+  <rect class="box" x="700" y="262" width="156" height="48" rx="6"/>
+  <text x="778" y="291" text-anchor="middle">bits 1-0  RPL</text>
+  <text class="h" x="24" y="348">The two gates this kernel installs. Red is the type and DPL it writes</text>
+  <rect class="box" x="24" y="364" width="410" height="72" rx="6"/>
+  <text x="40" y="390">int 0x80  trap gate</text>
+  <text class="chg" x="40" y="416">type = 15    DPL = 3</text>
+  <rect class="box" x="450" y="364" width="406" height="72" rx="6"/>
+  <text x="466" y="390">vector 0x20  interrupt gate  timer</text>
+  <text class="chg" x="466" y="416">type = 14    DPL = 0</text>
+
+</svg>

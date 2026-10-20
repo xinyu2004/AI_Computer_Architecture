@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="800" viewBox="0 0 880 800">
+
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#1e3a8a"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .hw { fill: #dbeafe; stroke: #1e3a8a; }
+    .sw { fill: #fef3c7; stroke: #92400e; }
+    .arr { stroke: #1e3a8a; stroke-width: 2; fill: none; marker-end: url(#ah); }
+  </style>
+
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">Frame 1. The index is a slice of the address. The root holds the table</text>
+    <text x="24" y="54">80386 fetch: linear = CS hidden base + EIP. A data access: linear = DS hidden base + offset.</text>
+    <rect class="box" x="24" y="70" width="280" height="56" rx="6"/>
+    <text x="164" y="92" text-anchor="middle">bits 31-22</text>
+    <text x="164" y="112" text-anchor="middle">directory index</text>
+    <rect class="box" x="312" y="70" width="250" height="56" rx="6"/>
+    <text x="437" y="92" text-anchor="middle">bits 21-12</text>
+    <text x="437" y="112" text-anchor="middle">page-table index</text>
+    <rect class="box" x="570" y="70" width="286" height="56" rx="6"/>
+    <text x="713" y="92" text-anchor="middle">bits 11-0</text>
+    <text x="713" y="112" text-anchor="middle">offset in the page</text>
+    <text x="24" y="154">CR3 = physical address of the directory. Entry address = CR3 + index x 4. This kernel writes CR3 = 0.</text>
+    <text x="24" y="182">RV32  VA bits 31-22 VPN[1], 21-12 VPN[0], 11-0 offset. satp bits 21:0 are the root page number.</text>
+    <text x="24" y="210">ARMv7  VA bits 31-20 level 1, 19-12 level 2, 11-0 offset. TTBR0 = physical address of level 1.</text>
+    <text x="24" y="238">AArch64  VA bits 38-30 level 1, 29-21 level 2, 20-12 level 3, 11-0 offset.</text>
+    <text x="24" y="266">TTBR0_EL1 = physical address of the root. T0SZ = 25, so the walk starts at level 1.</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,320)">
+    <text class="h" x="24" y="28">Frame 2. A task switch writes a new root. Red is the value just stored</text>
+    <rect class="box" x="24" y="52" width="410" height="120" rx="6"/>
+    <text x="40" y="78">80386 loads this from the new TSS</text>
+    <text class="chg" x="40" y="104">CR3 = physical address of the new directory</text>
+    <text x="40" y="130">Segment registers and the bit split stay</text>
+    <text class="s" x="40" y="152">schedule does not write CR3. switch_to is an ljmp</text>
+    <rect class="box" x="450" y="52" width="406" height="120" rx="6"/>
+    <text class="chg" x="466" y="80">RV32  satp = new root</text>
+    <text class="chg" x="466" y="106">ARMv7  TTBR0 = new root</text>
+    <text class="chg" x="466" y="132">AArch64  TTBR0_EL1 = new root</text>
+    <text class="s" x="466" y="156">The next walk uses this table</text>
+  </g>
+  <g class="frame" id="f2" transform="translate(0,520)">
+    <text class="h" x="24" y="28">Frame 3. setup_paging in head.s fills these four tables</text>
+    <text x="24" y="54">edi = 0, ecx = 1024 x 5. stosl clears 20KB at physical 0, the directory plus four tables.</text>
+    <rect class="box" x="24" y="70" width="160" height="48" rx="6"/>
+    <text x="104" y="99" text-anchor="middle">directory  0</text>
+    <rect class="box" x="196" y="70" width="160" height="48" rx="6"/>
+    <text x="276" y="99" text-anchor="middle">pg0  0x1000</text>
+    <rect class="box" x="368" y="70" width="160" height="48" rx="6"/>
+    <text x="448" y="99" text-anchor="middle">pg1  0x2000</text>
+    <rect class="box" x="540" y="70" width="160" height="48" rx="6"/>
+    <text x="620" y="99" text-anchor="middle">pg2  0x3000</text>
+    <rect class="box" x="712" y="70" width="144" height="48" rx="6"/>
+    <text x="784" y="99" text-anchor="middle">pg3  0x4000</text>
+    <text x="24" y="146">The first four entries are the table address plus 7. Linear bits 31-22 are 0, 1, 2, and 3.</text>
+    <text x="24" y="174">The tables identity-map the first 16MB. Linear N and physical N are the same cell.</text>
+    <text class="chg" x="24" y="206">CR3 = 0</text>
+    <text class="chg" x="160" y="206">CR0.PG = 1</text>
+    <text x="320" y="206">CR0.PE = 1</text>
+    <text class="s" x="24" y="236">startup_32 at address 0 has already run. This stosl replaces those bytes with the directory.</text>
+  </g>
+
+</svg>

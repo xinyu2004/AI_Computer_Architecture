@@ -6,6 +6,8 @@
 
 启动是 `labs/armv7/qemu/launch.sh`。UART 在这个终端里。F5 选 **ARMv7**，停在 `entry.S` 的 `_start`，再下断点。断在函数上。地址以这次编译为准。
 
+图上这一列的铭牌是 [SVC](../armv7_instructions.md#cpsr) 和 [TTBR0](../armv7_instructions.md#ttbr0)，见 [机制图](../mech.md)。
+
 ## UART 上先看这段
 
 ```text

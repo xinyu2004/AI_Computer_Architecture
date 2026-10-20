@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="660" viewBox="0 0 880 660">
+
+  <style>
+    text { font-family: "Noto Sans CJK SC", "Noto Sans CJK TC", sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .arr { stroke: #1e3a8a; stroke-width: 2; fill: none; marker-end: url(#ah); }
+  </style>
+
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">帧 1　调用号在哪个寄存器。红色是这一步要读的号和原因</text>
+    <rect class="box" x="24" y="48" width="410" height="140" rx="6"/>
+    <text x="40" y="74">80386　int $0x80</text>
+    <text class="chg" x="40" y="100">EAX = 调用号</text>
+    <text x="40" y="124">EDX、ECX、EBX 是三个参数</text>
+    <text x="40" y="148">返回值写回 EAX。向量是 0x80</text>
+    <text class="s" x="40" y="172">陷入前用户把号写进 EAX</text>
+    <rect class="box" x="446" y="48" width="410" height="140" rx="6"/>
+    <text x="462" y="74">RV32　ecall</text>
+    <text class="chg" x="462" y="100">a7 = 调用号</text>
+    <text class="chg" x="462" y="124">scause = 8，第 31 位 = 0</text>
+    <text x="462" y="148">a0、a1、a2 是参数。返回值在 a0</text>
+    <text class="s" x="462" y="172">sepc 指着这条 ecall</text>
+    <rect class="box" x="24" y="200" width="410" height="140" rx="6"/>
+    <text x="40" y="226">ARMv7　svc #0</text>
+    <text class="chg" x="40" y="252">r7 = 调用号</text>
+    <text x="40" y="276">入口是 svc 向量。调用号从 r7 读</text>
+    <text x="40" y="300">r0、r1、r2 是参数。返回值在 r0</text>
+    <text class="s" x="40" y="324">LR_svc 已经是下一条</text>
+    <rect class="box" x="446" y="200" width="410" height="140" rx="6"/>
+    <text x="462" y="226">AArch64　svc #0</text>
+    <text class="chg" x="462" y="252">x8 = 调用号</text>
+    <text class="chg" x="462" y="276">ESR_EL1 第 31–26 位 = 0x15</text>
+    <text x="462" y="300">x0、x1、x2 是参数。返回值在 x0</text>
+    <text class="s" x="462" y="324">ELR_EL1 已经是下一条</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,360)">
+    <text class="h" x="24" y="28">帧 2　时钟原因。红色是硬件写进原因寄存器的值</text>
+    <rect class="box" x="24" y="48" width="832" height="44" rx="6"/>
+    <text x="40" y="76">80386　8259 把 IRQ0 送成向量</text>
+    <text class="chg" x="340" y="76">0x20</text>
+    <rect class="box" x="24" y="104" width="832" height="84" rx="6"/>
+    <text x="40" y="128">RV32　scause 整条</text>
+    <text class="chg" x="200" y="128">0x80000005</text>
+    <text x="40" y="152">第 31 位 = 1，低位 = 5。其余位是 0。</text>
+    <text class="s" x="40" y="174">RV64 的中断位在第 63 位，值是 0x8000000000000005。</text>
+    <rect class="box" x="24" y="200" width="410" height="64" rx="6"/>
+    <text x="40" y="226">ARMv7　GICC_IAR</text>
+    <text class="chg" x="40" y="250">低 10 位 = 30</text>
+    <rect class="box" x="446" y="200" width="410" height="64" rx="6"/>
+    <text x="462" y="226">AArch64　GICC_IAR</text>
+    <text class="chg" x="462" y="250">低 10 位 = 30</text>
+  </g>
+
+</svg>

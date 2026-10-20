@@ -6,7 +6,7 @@
 
 ## 这一章要看懂什么
 
-`setup_paging` 在物理地址 0 写下页目录和四张页表，共 20KiB，把前 16MB 做成恒等映射，然后置上 CR0.PG。这些写会把 store queue 填满。周期来自 gem5 的乱序模型，时钟 1 GHz，L1 各 32KiB，行长 64 字节。
+`setup_paging` 在物理地址 0 写下页目录和四张页表，共 20KiB，把前 16MB 做成恒等映射，然后置上 [CR0](../i386_instructions.md#cr0) 的 [PG](../i386_instructions.md#pg)。这些写会把 store queue 填满。周期来自 gem5 的乱序模型，时钟 1 GHz，L1 各 32KiB，行长 64 字节。换根寄存器的两帧在 [机制图](../mech.md#mmu)。
 
 ## 读哪里
 

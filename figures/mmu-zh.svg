@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="800" viewBox="0 0 880 800">
+
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#1e3a8a"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: "Noto Sans CJK SC", "Noto Sans CJK TC", sans-serif; fill: #1c1917; font-size: 14px; }
+    .h { font-size: 16px; font-weight: 700; }
+    .s { font-size: 13px; fill: #44403c; }
+    .chg { fill: #b91c1c; font-weight: 700; }
+    .box { fill: #f5f5f4; stroke: #44403c; }
+    .hw { fill: #dbeafe; stroke: #1e3a8a; }
+    .sw { fill: #fef3c7; stroke: #92400e; }
+    .arr { stroke: #1e3a8a; stroke-width: 2; fill: none; marker-end: url(#ah); }
+  </style>
+
+  <g class="frame" id="f0">
+    <text class="h" x="24" y="28">帧 1　目录号是地址里的一段。根寄存器里是表的物理地址</text>
+    <text x="24" y="54">80386 取指令：线性地址 = CS 隐藏基址 + EIP。读数据：线性地址 = DS 隐藏基址 + 偏移。</text>
+    <rect class="box" x="24" y="70" width="280" height="56" rx="6"/>
+    <text x="164" y="92" text-anchor="middle">第 31–22 位</text>
+    <text x="164" y="112" text-anchor="middle">目录号</text>
+    <rect class="box" x="312" y="70" width="250" height="56" rx="6"/>
+    <text x="437" y="92" text-anchor="middle">第 21–12 位</text>
+    <text x="437" y="112" text-anchor="middle">页表号</text>
+    <rect class="box" x="570" y="70" width="286" height="56" rx="6"/>
+    <text x="713" y="92" text-anchor="middle">第 11–0 位</text>
+    <text x="713" y="112" text-anchor="middle">页内偏移</text>
+    <text x="24" y="154">CR3 = 页目录的物理地址。目录项地址 = CR3 + 目录号 × 4。这份内核把 CR3 写成 0。</text>
+    <text x="24" y="182">RV32　虚拟地址第 31–22 位 VPN[1]，第 21–12 位 VPN[0]，第 11–0 位偏移。satp 低 22 位是根的页号。</text>
+    <text x="24" y="210">ARMv7　VA 第 31–20 位一级表项，第 19–12 位二级，第 11–0 位偏移。TTBR0 = 一级表物理地址。</text>
+    <text x="24" y="238">AArch64　VA 第 38–30 位第 1 级，29–21 第 2 级，20–12 第 3 级，11–0 偏移。</text>
+    <text x="24" y="266">TTBR0_EL1 = 根表物理地址。T0SZ = 25，从第 1 级开始查。</text>
+  </g>
+  <g class="frame" id="f1" transform="translate(0,320)">
+    <text class="h" x="24" y="28">帧 2　换任务时换的是根寄存器。红色是新写进去的值</text>
+    <rect class="box" x="24" y="52" width="410" height="120" rx="6"/>
+    <text x="40" y="78">80386　从新 TSS 装入</text>
+    <text class="chg" x="40" y="104">CR3 = 新页目录的物理地址</text>
+    <text x="40" y="130">段寄存器、线性地址的切法留在原处</text>
+    <text class="s" x="40" y="152">schedule 自己不写 CR3。switch_to 是 ljmp</text>
+    <rect class="box" x="450" y="52" width="406" height="120" rx="6"/>
+    <text class="chg" x="466" y="80">RV32　satp = 新根</text>
+    <text class="chg" x="466" y="106">ARMv7　TTBR0 = 新根</text>
+    <text class="chg" x="466" y="132">AArch64　TTBR0_EL1 = 新根</text>
+    <text class="s" x="466" y="156">下一次查找走这张新表</text>
+  </g>
+  <g class="frame" id="f2" transform="translate(0,520)">
+    <text class="h" x="24" y="28">帧 3　head.s 的 setup_paging 填这四张表</text>
+    <text x="24" y="54">edi = 0，ecx = 1024×5。stosl 从物理地址 0 清掉 20KB，页目录加四张页表。</text>
+    <rect class="box" x="24" y="70" width="160" height="48" rx="6"/>
+    <text x="104" y="99" text-anchor="middle">目录　0</text>
+    <rect class="box" x="196" y="70" width="160" height="48" rx="6"/>
+    <text x="276" y="99" text-anchor="middle">pg0　0x1000</text>
+    <rect class="box" x="368" y="70" width="160" height="48" rx="6"/>
+    <text x="448" y="99" text-anchor="middle">pg1　0x2000</text>
+    <rect class="box" x="540" y="70" width="160" height="48" rx="6"/>
+    <text x="620" y="99" text-anchor="middle">pg2　0x3000</text>
+    <rect class="box" x="712" y="70" width="144" height="48" rx="6"/>
+    <text x="784" y="99" text-anchor="middle">pg3　0x4000</text>
+    <text x="24" y="146">目录前四项 = 表地址 + 7（在页里、可写、用户可访问）。线性地址的 31–22 是 0、1、2、3。</text>
+    <text x="24" y="174">四张表做恒等映射，覆盖开头 16MB。线性地址 N 和物理地址 N 是同一格。</text>
+    <text class="chg" x="24" y="206">CR3 = 0</text>
+    <text class="chg" x="160" y="206">CR0.PG = 1</text>
+    <text x="320" y="206">CR0.PE = 1</text>
+    <text class="s" x="24" y="236">地址 0 上的 startup_32 已经执行过。这次 stosl 用页目录盖掉那些字节。</text>
+  </g>
+
+</svg>

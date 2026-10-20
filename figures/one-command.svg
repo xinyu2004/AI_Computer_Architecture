@@ -1,7 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="720" height="120" viewBox="0 0 720 120">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#1e3a8a"/>
+    </marker>
+  </defs>
   <style>
     text { font-family: ui-sans-serif, sans-serif; fill: #1c1917; font-size: 14px; }
     .box { fill: #f5f5f4; stroke: #44403c; }
+    .arr { stroke: #1e3a8a; stroke-width: 2; fill: none; marker-end: url(#ah); }
   </style>
   <rect class="box" x="16" y="36" width="100" height="40" rx="6"/>
   <text x="66" y="61" text-anchor="middle">shell</text>
@@ -13,11 +19,11 @@
   <text x="506" y="61" text-anchor="middle">echo hello</text>
   <rect class="box" x="606" y="36" width="98" height="40" rx="6"/>
   <text x="655" y="61" text-anchor="middle">swtch</text>
-  <g stroke="#44403c" stroke-width="1.5" fill="none">
-    <line x1="116" y1="56" x2="156" y2="56"/>
-    <line x1="266" y1="56" x2="306" y2="56"/>
-    <line x1="406" y1="56" x2="446" y2="56"/>
-    <line x1="566" y1="56" x2="606" y2="56"/>
-    <polyline points="655,76 655,96 66,96 66,76"/>
+  <g>
+    <line class="arr" x1="116" y1="56" x2="152" y2="56"/>
+    <line class="arr" x1="266" y1="56" x2="302" y2="56"/>
+    <line class="arr" x1="406" y1="56" x2="442" y2="56"/>
+    <line class="arr" x1="566" y1="56" x2="602" y2="56"/>
+    <polyline class="arr" points="655,76 655,96 66,96 66,80"/>
   </g>
 </svg>

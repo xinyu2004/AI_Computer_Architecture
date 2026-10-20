@@ -6,7 +6,7 @@
 
 ## What this chapter is for
 
-`setup_paging` writes a page directory and four page tables at physical address 0, 20KiB in all, identity-maps the first 16MB, and then sets CR0.PG. Those writes fill the store queue. The cycles come from gem5's out-of-order model at 1 GHz, with 32KiB L1 caches and 64-byte lines.
+`setup_paging` writes a page directory and four page tables at physical address 0, 20KiB in all, identity-maps the first 16MB, and then sets [PG](../i386_instructions.md#pg) in [CR0](../i386_instructions.md#cr0). Those writes fill the store queue. The cycles come from gem5's out-of-order model at 1 GHz, with 32KiB L1 caches and 64-byte lines. The two frames that replace the page-table root are in the [mechanism pictures](../mech.md#mmu).
 
 ## What to read
 

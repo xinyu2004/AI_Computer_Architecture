@@ -6,7 +6,7 @@
 
 ## 这一章要看懂什么
 
-写一块共享页时，内核另分配一页并复制 4KiB。`copy_page` 是宏，本体是 1024 个双字的 `rep movsl`。它和 `setup_paging` 的 `stosl` 一样，会把 store queue 填满。一个在填页表，一个在复制一页。
+写一块共享页时，内核另分配一页并复制 4KiB。`copy_page` 是宏，本体是 1024 个双字的 `rep movsl`。它和 `setup_paging` 的 `stosl` 一样，会把 store queue 填满。一个在填页表，一个在复制一页。源、目的和次数在 [搬一页](../mech.md#copy)。
 
 ## 读哪里
 

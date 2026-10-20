@@ -18,7 +18,7 @@ This repository is for people learning computer architecture through Linux 0.11.
 
 ### [The same questions, on another CPU](docs/en/course.md)
 
-The 80386 answers them first, RV32 answers them again, and ARMv7 and AArch64 answer them in two columns.
+The 80386 answers them first, RV32 answers them again, and ARMv7 and AArch64 answer them in two columns. AArch64 is the 64-bit state of ARMv8. The register pictures are in [mechanism pictures](docs/en/mech.md).
 
 - Which instruction traps into the kernel on a system call
 - Where register state is saved across a context switch
